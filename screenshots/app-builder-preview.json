@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "LOG_ON",
+      "hasCanvas": false,
+      "bodyTextLen": 747,
+      "bodyTextHash": "be82c34273ab5573ee72265aceab4838150f8e00a321ad527b4e94588c859380",
+      "bodyTextPrefix": "L LOG_ON OS Control Plane Control plane New execution Registry S",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "LOG_ON",
+      "hasCanvas": false,
+      "bodyTextLen": 3115,
+      "bodyTextHash": "7b5aa20c061de50c1635f319a85b35c5cf434b06931cc2f8bfa46fc66d997e84",
+      "bodyTextPrefix": "L LOG_ON OS Control Plane Control plane New execution Registry S",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
