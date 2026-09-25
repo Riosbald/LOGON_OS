@@ -7,33 +7,27 @@
 
 ## Vertical strategy (hybrid C \u2014 locked 2026-09-25)
 - **Public lead niche:** Specialist clinic & professional services \u2014 Lagos
-- **Reference architectures (labelled, not client claims):**
-  1. Hospitality
-  2. Gig / job platform (HITL apply + fake-job detection)
-  3. Internal ops / information outsourcing
-- Evidence classes: Builder-operated \u00b7 Reference architecture \u00b7 Engagement in progress \u00b7 Client-consented
-- No metrics on site until instrumented engagement produces them (niche \u00b7 period \u00b7 baseline \u00b7 failure)
+- **Reference architectures:** Hospitality \u00b7 Gig/job platform \u00b7 Internal ops
+- Evidence classes: Builder-operated \u00b7 Reference \u00b7 Engagement in progress \u00b7 Client-consented
+
+## Evidence artefacts (2026-09-25)
+- FAILURE-0001 \u2014 Registered \u2260 permitted (builder-operated)
+- FAILURE-0002 \u2014 High-impact waits for approval (builder-operated)
+- docs/evidence/EVIDENCE-INDEX.md
+- /insights surfaces the index
 
 ## Site depth
 | Route | Depth |
 |-------|--------|
-| /systems/business | Full |
-| /systems/assurance | Full |
-| /systems/intelligence | Full |
-| /systems/vertical-os | Full (hybrid C) |
-| /systems/voice, platform, research, insights, partners, audit, control-plane, landing | Map / solid |
+| business, assurance, intelligence, vertical-os | Full |
+| insights | Evidence index |
+| other core routes | Map / solid |
 
 ## Kernel
-- Control plane at /control-plane
-- FAILURE-0001 pattern: registered tool without permission \u2192 denial
-
-## Decisions log (2026-09-25)
-- ADR-0001: Hybrid C vertical strategy \u2014 accepted
-- Business \u00a7Evidence aligned to evidence classes + lead niche + link to /systems/vertical-os
-- Owner audits all pages before treating push as final; engineering may continue commits
-- Priority after audit: one kernel/evidence artefact, then first lead-niche workflow \u2014 not more full page rewrites
+- Control plane: /control-plane
+- engine.test.ts encodes PERMISSION_DENIAL and APPROVAL gates
 
 ## Next
 - Owner audit pass
-- One evidence artefact (trace or failure analysis) linked from Business + Vertical OS
 - First instrumented workflow in lead niche
+- Optional: control-plane execution export as TRACE artefact
