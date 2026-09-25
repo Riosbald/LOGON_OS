@@ -5,29 +5,20 @@
 - Thesis: LOG_ON builds the intelligence and control layer that lets organisations turn AI capability into trustworthy real-world work.
 - Principle: Can do \u2260 may do
 
-## Vertical strategy (hybrid C \u2014 locked 2026-09-25)
-- **Public lead niche:** Specialist clinic & professional services \u2014 Lagos
-- **Reference architectures:** Hospitality \u00b7 Gig/job platform \u00b7 Internal ops
-- Evidence classes: Builder-operated \u00b7 Reference \u00b7 Engagement in progress \u00b7 Client-consented
+## Vertical strategy (hybrid C)
+- Public lead: Specialist clinic & professional services \u2014 Lagos
+- References: Hospitality \u00b7 Gig/job platform \u00b7 Internal ops
 
-## Evidence artefacts (2026-09-25)
-- FAILURE-0001 \u2014 Registered \u2260 permitted (builder-operated)
-- FAILURE-0002 \u2014 High-impact waits for approval (builder-operated)
-- docs/evidence/EVIDENCE-INDEX.md
-- /insights surfaces the index
+## Evidence
+- FAILURE-0001, FAILURE-0002 (builder-operated)
+- /insights + docs/evidence/EVIDENCE-INDEX.md
 
-## Site depth
-| Route | Depth |
-|-------|--------|
-| business, assurance, intelligence, vertical-os | Full |
-| insights | Evidence index |
-| other core routes | Map / solid |
-
-## Kernel
-- Control plane: /control-plane
-- engine.test.ts encodes PERMISSION_DENIAL and APPROVAL gates
+## Deploy
+- Nitro preset: vercel (vite.config.ts)
+- `npm run build` verified locally
+- Connect Riosbald/LOGON_OS in Vercel dashboard for production URL (see docs/DEPLOY.md)
+- Sandbox has no VERCEL_TOKEN \u2014 owner links GitHub \u2192 Vercel once
 
 ## Next
-- Owner audit pass
-- First instrumented workflow in lead niche
-- Optional: control-plane execution export as TRACE artefact
+- Owner: Vercel import + browser audit
+- First lead-niche workflow after audit
