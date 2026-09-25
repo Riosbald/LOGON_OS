@@ -27,6 +27,13 @@
 - Control plane at /control-plane
 - FAILURE-0001 pattern: registered tool without permission \u2192 denial
 
+## Decisions log (2026-09-25)
+- ADR-0001: Hybrid C vertical strategy \u2014 accepted
+- Business \u00a7Evidence aligned to evidence classes + lead niche + link to /systems/vertical-os
+- Owner audits all pages before treating push as final; engineering may continue commits
+- Priority after audit: one kernel/evidence artefact, then first lead-niche workflow \u2014 not more full page rewrites
+
 ## Next
-- First instrumented workflow in lead niche
+- Owner audit pass
 - One evidence artefact (trace or failure analysis) linked from Business + Vertical OS
+- First instrumented workflow in lead niche
