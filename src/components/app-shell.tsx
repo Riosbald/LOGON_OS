@@ -4,7 +4,7 @@ import { useLogonStore } from "@/lib/logon/store";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "Control plane" },
+  { to: "/control-plane", label: "Control plane" },
   { to: "/compose", label: "New execution" },
   { to: "/registry", label: "Registry" },
   { to: "/systems", label: "Systems" },
@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto min-h-dvh max-w-[1540px] px-4 pb-10 pt-5 sm:px-7">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
+        <Link to="/control-plane" className="flex items-center gap-3 no-underline">
           <div className="grid size-11 place-items-center rounded-[13px] bg-ink font-display text-2xl leading-none text-paper">
             L
           </div>
@@ -33,11 +33,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               Control Plane
             </h1>
           </div>
-        </div>
+        </Link>
 
         <nav className="flex flex-wrap gap-1.5" aria-label="Primary">
           {NAV.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+            const active =
+              item.to === "/control-plane"
+                ? pathname === "/control-plane"
+                : pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
@@ -59,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {principal.subjectId}
             </strong>
             <span className="text-muted">{principal.tenantId}</span>
-            <span className="text-muted">{principal.roles.join(" · ")}</span>
+            <span className="text-muted">{principal.roles.join(" \u00b7 ")}</span>
           </div>
           <span className="inline-flex items-center gap-2 text-xs font-semibold">
             <span
@@ -74,8 +77,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       {children}
       <footer className="mt-5 flex flex-col gap-1.5 px-1 font-mono text-[10px] text-muted sm:flex-row sm:justify-between">
-        <span>LOG_ON · Execution is controlled by the kernel.</span>
-        <span>Can do ≠ may do.</span>
+        <span>
+          LOG_ON \u00b7 Kernel.{" "}
+          <Link to="/" className="underline-offset-2 hover:underline">
+            Company site
+          </Link>
+        </span>
+        <span>Can do \u2260 may do.</span>
       </footer>
     </div>
   );
