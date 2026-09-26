@@ -7,7 +7,11 @@ export function readinessProbeDelayMs(attempt: number): number {
     Math.max(attempt, 0),
     READINESS_PROBE_DELAYS_MS.length - 1,
   );
-  return READINESS_PROBE_DELAYS_MS[index];
+  const delay = READINESS_PROBE_DELAYS_MS[index];
+  if (delay === undefined) {
+    throw new Error(`No readiness probe delay configured for attempt ${attempt}`);
+  }
+  return delay;
 }
 
 export function readinessProbeExhausted(

@@ -258,8 +258,8 @@ test("rejects Vercel system hosts as og:image origins", () => {
 });
 
 test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () => {
-  const prev = process.env.VITE_PUBLIC_HOSTNAME;
-  process.env.VITE_PUBLIC_HOSTNAME = "plum-plaza-reef-dream.grok.me";
+  const prev = process.env["VITE_PUBLIC_HOSTNAME"];
+  process.env["VITE_PUBLIC_HOSTNAME"] = "plum-plaza-reef-dream.grok.me";
   try {
     const vercelHost = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
@@ -281,14 +281,14 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
     );
     assert.doesNotMatch(otherPublicHost, /custom\.example\.com/);
   } finally {
-    if (prev === undefined) delete process.env.VITE_PUBLIC_HOSTNAME;
-    else process.env.VITE_PUBLIC_HOSTNAME = prev;
+    if (prev === undefined) delete process.env["VITE_PUBLIC_HOSTNAME"];
+    else process.env["VITE_PUBLIC_HOSTNAME"] = prev;
   }
 });
 
 test("vercel Host without a public hostname emits no og:image", () => {
-  const prev = process.env.VITE_PUBLIC_HOSTNAME;
-  delete process.env.VITE_PUBLIC_HOSTNAME;
+  const prev = process.env["VITE_PUBLIC_HOSTNAME"];
+  delete process.env["VITE_PUBLIC_HOSTNAME"];
   try {
     const out = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
@@ -297,8 +297,8 @@ test("vercel Host without a public hostname emits no og:image", () => {
     assert.doesNotMatch(out, /property="og:image"/);
     assert.doesNotMatch(out, /vercel\.app/);
   } finally {
-    if (prev === undefined) delete process.env.VITE_PUBLIC_HOSTNAME;
-    else process.env.VITE_PUBLIC_HOSTNAME = prev;
+    if (prev === undefined) delete process.env["VITE_PUBLIC_HOSTNAME"];
+    else process.env["VITE_PUBLIC_HOSTNAME"] = prev;
   }
 });
 
@@ -416,7 +416,8 @@ test("streaming injector passes post-head chunks through untouched", () => {
   const injector = createHeadInjector();
   injector.push("<html><head></head>");
   const [tail] = injector.push("<body>tail</body>");
-  assert.equal(tail.toString("utf8"), "<body>tail</body>");
+  assert.ok(tail);
+  assert.equal(Buffer.from(tail).toString("utf8"), "<body>tail</body>");
 });
 
 test("streaming injector falls back when no </head> is seen", () => {

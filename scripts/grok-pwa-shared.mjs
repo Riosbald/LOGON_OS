@@ -303,14 +303,14 @@ export function resolveOgTitle(
   host = "",
   documentTitle = "",
 ) {
-  const fromSite = String(site.title ?? "").trim();
-  if (fromSite) return fromSite;
   const fromDoc = String(documentTitle ?? "").trim();
   if (fromDoc) return fromDoc;
+  const fromSite = String(site.title ?? "").trim();
   const fromHost = appNameFromHost(host);
+  if (fromSite && (fromSite !== "LOG_ON" || fromHost === DEFAULT_APP_NAME)) return fromSite;
   if (fromHost && fromHost !== DEFAULT_APP_NAME) return fromHost;
   const fromArg = String(appName ?? "").trim();
-  return fromArg || DEFAULT_APP_NAME;
+  return fromSite || fromArg || DEFAULT_APP_NAME;
 }
 
 export function siteHasCustomCard(site = {}) {
@@ -401,15 +401,18 @@ function insertBeforeHeadClose(html, snippet) {
 }
 
 export function normalizeHeadContext(ctx = {}) {
-  const cwd = ctx.cwd ?? process.cwd();
-  // Middleware passes a baked `site`. Still consult the workspace so a
-  // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
-  // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
-  // a correct bake is unchanged.
-  const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
-    cwd,
-  );
+  const cwd = ctx.cwd ?? "/__logon_runtime_without_workspace__";
+  // Runtime callers provide the baked identity or an explicit workspace root.
+  // Direct callers without either should remain environment-independent: tests,
+  // previews and library consumers must not inherit this checkout's card.
+  const site =
+    ctx.site !== undefined
+      ? ctx.cwd === undefined
+        ? ctx.site
+        : applyCustomCardFromFs(ctx.site, cwd)
+      : ctx.cwd === undefined
+        ? {}
+        : snapshotOgIdentity(cwd).site;
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,

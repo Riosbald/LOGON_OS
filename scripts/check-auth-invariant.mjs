@@ -27,7 +27,11 @@ import { isMainModule, mergeAppEnv, projectRoot, readAppEnv } from "./with-app-e
 
 const DEFAULT_DEV_URL = "http://127.0.0.1:8080";
 
+/** @typedef {{ status: "ok" | "diverged" | "indeterminate", message: string }} AuthInvariantResult */
+/** @typedef {(input: string | URL, init?: RequestInit) => Promise<{ ok: boolean, text: () => Promise<string> }>} FetchLike */
+
 /** The predicate `src/lib/auth/{client,server}.ts` apply to the flag. */
+/** @param {unknown} value */
 export function authEnabledFromEnvValue(value) {
   return value !== "false";
 }
@@ -36,7 +40,9 @@ export function authEnabledFromEnvValue(value) {
  * Compare the two resolved values. `null` means "could not observe" — reported
  * as indeterminate rather than as agreement.
  */
+/** @param {{ devAuthEnabled: boolean | null | undefined, buildAuthEnabled: boolean }} values @returns {AuthInvariantResult} */
 export function compareAuthInvariant({ devAuthEnabled, buildAuthEnabled }) {
+  /** @param {boolean} value */
   const label = (value) => (value ? "on" : "off");
   if (devAuthEnabled === null || devAuthEnabled === undefined) {
     return {
@@ -65,6 +71,7 @@ export function compareAuthInvariant({ devAuthEnabled, buildAuthEnabled }) {
  * `/__app-env` (no server, a built-output preview, an older workspace without
  * the plugin) is "could not observe".
  */
+/** @param {string} devUrl @param {FetchLike} [fetchImpl] */
 export async function probeDevAuthEnabled(devUrl, fetchImpl = fetch) {
   let env;
   try {
@@ -74,24 +81,29 @@ export async function probeDevAuthEnabled(devUrl, fetchImpl = fetch) {
   } catch {
     return null;
   }
-  if (env === null || typeof env !== "object") return null;
-  return authEnabledFromEnvValue(env.VITE_AUTH_ENABLED);
+  if (env === null || typeof env !== "object" || Array.isArray(env)) return null;
+  /** @type {Record<string, unknown>} */
+  const values = env;
+  return authEnabledFromEnvValue(values["VITE_AUTH_ENABLED"]);
 }
 
 /** The smoke-verdict warnings for a comparison: a real divergence only. */
+/** @param {AuthInvariantResult} result */
 export function authInvariantWarnings(result) {
   return result.status === "diverged" ? [result.message] : [];
 }
 
 /** What `vite build` / `vite preview` will resolve, via the same wrapper. */
+/** @param {string} [root] @param {Record<string, string | undefined>} [processEnv] */
 export function buildAuthEnabled(root = projectRoot(), processEnv = process.env) {
   const env = mergeAppEnv(readAppEnv(root), processEnv);
-  return authEnabledFromEnvValue(env.VITE_AUTH_ENABLED);
+  return authEnabledFromEnvValue(env["VITE_AUTH_ENABLED"]);
 }
 
+/** @param {string[]} argv */
 async function main(argv) {
   const devUrlFlag = argv.indexOf("--dev-url");
-  const devUrl = devUrlFlag === -1 ? DEFAULT_DEV_URL : argv[devUrlFlag + 1];
+  const devUrl = devUrlFlag === -1 ? DEFAULT_DEV_URL : argv[devUrlFlag + 1] ?? DEFAULT_DEV_URL;
   const result = compareAuthInvariant({
     devAuthEnabled: await probeDevAuthEnabled(devUrl),
     buildAuthEnabled: buildAuthEnabled(),

@@ -32,6 +32,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { OG_SITE_REL_PATH, readOgSite, siteHasCustomCard } from "./grok-pwa-shared.mjs";
 
+/** @typedef {import("./grok-pwa-shared.d.mts").OgSite} OgSite */
+/** @typedef {{ hasCanvas: boolean, workspaceRoot?: string, now?: number }} BrandWarningOptions */
+/** @typedef {{ game?: boolean, placeholderOk?: boolean, root?: string | null, error?: string }} BrandCheckArgs */
+
 // Over this, link scrapers (X card previews included) time out or skip the
 // image, so the card silently fails to unfurl. The og skill's JPEG contract
 // (ffmpeg -q:v 4, ~150-300 KB) exists precisely to stay under it.
@@ -43,10 +47,12 @@ export const OG_PENDING_REL_PATH = ".grok/og-pending";
 // instead of hiding a missing card forever on that workspace.
 export const OG_PENDING_MAX_AGE_MS = 10 * 60 * 1000;
 
+/** @param {OgSite | undefined} site */
 export function siteDeclaresOgTypeGame(site) {
   return String(site?.type ?? "").toLowerCase() === "x:game";
 }
 
+/** @param {string} workspaceRoot @param {number} [now] */
 export function ogPendingActive(workspaceRoot, now = Date.now()) {
   try {
     const { mtimeMs } = statSync(join(workspaceRoot, OG_PENDING_REL_PATH));
@@ -63,6 +69,7 @@ export function ogPendingActive(workspaceRoot, now = Date.now()) {
  * In flight is silence, not a note: callers report this array as warnings, so
  * anything left in it — however it is worded — reaches the agent as one.
  */
+/** @param {BrandWarningOptions} options */
 export function computeBrandWarnings({
   hasCanvas,
   workspaceRoot = "/workspace",
@@ -80,6 +87,7 @@ export function computeBrandWarnings({
  * placeholder is a failure, not the plain-utility default the parent's gate
  * leaves alone.
  */
+/** @param {{ hasCanvas: boolean, workspaceRoot?: string, cardRequired?: boolean }} options */
 function brandWarningsOnDisk({
   hasCanvas,
   workspaceRoot = "/workspace",
@@ -92,6 +100,7 @@ function brandWarningsOnDisk({
     join(workspaceRoot, "public/og.jpg"),
     join(workspaceRoot, "public/og.png"),
   ].find(existsSync);
+  /** @type {string[]} */
   const warnings = [];
 
   if (cardPath !== undefined) {
@@ -166,6 +175,7 @@ function brandWarningsOnDisk({
   return warnings;
 }
 
+/** @param {string[]} argv @returns {BrandCheckArgs} */
 export function parseBrandCheckArgs(argv) {
   const usage =
     "usage: node scripts/brand-check.mjs [--game] [--placeholder-ok] [--root <dir>]";
@@ -189,6 +199,7 @@ export function parseBrandCheckArgs(argv) {
   return { game, placeholderOk, root };
 }
 
+/** @param {string} message */
 function isBrandWarning(message) {
   return message.startsWith("BRAND WARNING:");
 }
@@ -205,7 +216,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // whether or not the app draws to a canvas — unless it was launched for a
   // plain utility that keeps the placeholder, which only it knows.
   const messages = brandWarningsOnDisk({
-    hasCanvas: args.game,
+    hasCanvas: args.game ?? false,
     workspaceRoot,
     cardRequired: !args.placeholderOk,
   });

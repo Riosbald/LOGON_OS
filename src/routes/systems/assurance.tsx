@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SiteShell, Eyebrow, FlowStrip, CtaLink } from "@/components/marketing/site-shell";
 
 export const Route = createFileRoute("/systems/assurance")({
@@ -117,7 +117,7 @@ function Page() {
   return (
     <SiteShell>
       <section className="mx-auto max-w-[1120px] px-4 pb-16 pt-14 sm:px-6 sm:pt-20">
-        <Eyebrow>ASSURANCE SYSTEMS</Eyebrow>
+        <Eyebrow>CTO / CIO / CISO / HEAD OF AI · ASSURANCE SYSTEMS</Eyebrow>
         <h1 className="mt-3 max-w-3xl font-display text-[clamp(2rem,4.5vw,3rem)] font-medium leading-[1.05] tracking-[-0.04em]">
           AI safety, delivered as an engineering process \u2014 not a policy document.
         </h1>

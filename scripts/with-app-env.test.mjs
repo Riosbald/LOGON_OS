@@ -17,6 +17,7 @@ const execFileAsync = promisify(execFile);
 const WRAPPER = join(projectRoot(), "scripts/with-app-env.mjs");
 const PRINT_FLAG = "process.stdout.write(String(process.env.VITE_AUTH_ENABLED));";
 
+/** @param {string} [appEnvJson] @returns {string} */
 function makeWorkspace(appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "app-env-"));
   if (appEnvJson !== undefined) {
@@ -55,8 +56,8 @@ test("an explicit process-env override wins over the file", () => {
     { VITE_AUTH_ENABLED: "false" },
     { VITE_AUTH_ENABLED: "true", PATH: "/usr/bin" },
   );
-  assert.equal(merged.VITE_AUTH_ENABLED, "true");
-  assert.equal(merged.PATH, "/usr/bin");
+  assert.equal(merged["VITE_AUTH_ENABLED"], "true");
+  assert.equal(merged["PATH"], "/usr/bin");
 });
 
 test("the template ships auth off", () => {
@@ -70,7 +71,7 @@ test("vite loadEnv resolves the wrapped value", () => {
   // native bindings that SIGSEGV the test worker under qemu-user.
   const root = makeWorkspace('{"VITE_AUTH_ENABLED":"false"}');
   const merged = mergeAppEnv(readAppEnv(root), { PATH: "/usr/bin" });
-  assert.equal(merged.VITE_AUTH_ENABLED, "false");
+  assert.equal(merged["VITE_AUTH_ENABLED"], "false");
 });
 
 test("the wrapped command runs with the app env applied", async () => {
@@ -95,7 +96,8 @@ test("the wrapped command sees an explicit override, not the file value", async 
 test("the wrapper propagates the command's exit code", async () => {
   await assert.rejects(
     execFileAsync(process.execPath, [WRAPPER, process.execPath, "-e", "process.exit(3)"]),
-    (err) => err.code === 3,
+    /** @param {unknown} err */
+    (err) => err instanceof Error && "code" in err && err.code === 3,
   );
 });
 
@@ -109,7 +111,10 @@ test("a signal-killed command is never reported as success", async () => {
       "-e",
       "process.kill(process.pid, 'SIGTERM');setTimeout(() => {}, 1000);",
     ]),
-    (err) => err.signal === "SIGTERM" || err.code !== 0,
+    /** @param {unknown} err */
+    (err) =>
+      err instanceof Error &&
+      (("signal" in err && err.signal === "SIGTERM") || ("code" in err && err.code !== 0)),
   );
 });
 

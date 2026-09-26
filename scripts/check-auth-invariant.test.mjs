@@ -19,6 +19,7 @@ import { projectRoot } from "./with-app-env.mjs";
  * `import { createServer } from "vite"` loads rolldown native bindings that
  * SIGSEGV the test worker under qemu-user (amd64 image builds).
  */
+/** @param {Record<string, string>} env */
 function appEnvFetch(env) {
   return async () => ({
     ok: true,

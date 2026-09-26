@@ -187,7 +187,7 @@ export function startExecution(
   const executionId = id("exec");
   const actorId = input.actorId ?? snapshot.principal.subjectId;
   const tenantId = input.tenantId ?? snapshot.tenantId;
-  const systemId = (input.context?.systemId as SystemId | undefined) ?? agent.systemId;
+  const systemId = (input.context?.["systemId"] as SystemId | undefined) ?? agent.systemId;
   const requiresApproval =
     Boolean(input.requiresApproval) ||
     input.policySet.includes("high-impact") ||
@@ -475,7 +475,7 @@ export function advanceExecution(
           tenantId: execution.tenantId,
           kind: "VALIDATION",
           source: "policy.africa-expansion",
-          payload: { dualControl: true, region: execution.request.context.region ?? "LAG" },
+          payload: { dualControl: true, region: execution.request.context["region"] ?? "LAG" },
         }, timestamp);
       }
 
@@ -508,8 +508,8 @@ export function advanceExecution(
       break;
     }
     case "EXECUTION": {
-      const proposed = Array.isArray(execution.request.context.proposedResults)
-        ? (execution.request.context.proposedResults as Array<{ toolId: string; result: unknown }>)
+      const proposed = Array.isArray(execution.request.context["proposedResults"])
+        ? (execution.request.context["proposedResults"] as Array<{ toolId: string; result: unknown }>)
         : execution.request.requestedTools.map((toolId) => ({
             toolId,
             result: simulateToolResult(toolId, execution),

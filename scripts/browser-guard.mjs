@@ -10,18 +10,19 @@ import { resolve, sep } from "node:path";
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 
 /** http/https loopback only, else exit 1. `BROWSER_ALLOW_EXTERNAL_HOST=1` opts out. */
+/** @param {string} url @returns {string} */
 export function checkedUrl(url) {
   let parsed;
   try {
     parsed = new URL(url);
   } catch {
-    fail(`not a valid URL: ${url}`);
+    return fail(`not a valid URL: ${url}`);
   }
   // Rules out file:, data:, chrome:, view-source:.
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     fail(`only http/https URLs are allowed, got ${parsed.protocol} in ${url}`);
   }
-  if (!LOOPBACK_HOSTNAMES.has(parsed.hostname) && process.env.BROWSER_ALLOW_EXTERNAL_HOST !== "1") {
+  if (!LOOPBACK_HOSTNAMES.has(parsed.hostname) && process.env["BROWSER_ALLOW_EXTERNAL_HOST"] !== "1") {
     fail(
       `${parsed.hostname} is not a loopback host; these scripts screenshot the ` +
         `local dev server. Set BROWSER_ALLOW_EXTERNAL_HOST=1 to override.`,
@@ -31,6 +32,7 @@ export function checkedUrl(url) {
 }
 
 /** Absolute `target` if it is strictly inside `allowedDirs`, else exit 1. */
+/** @param {string} target @param {string[]} allowedDirs @param {string} [label] @returns {string} */
 export function checkedOutputPath(target, allowedDirs, label = "screenshot") {
   // Resolve first so `..` cannot slip past the prefix check.
   const abs = resolve(target);
@@ -41,6 +43,7 @@ export function checkedOutputPath(target, allowedDirs, label = "screenshot") {
   return abs;
 }
 
+/** @param {string} message @returns {never} */
 function fail(message) {
   console.error(JSON.stringify({ ok: false, error: message }, null, 2));
   process.exit(1);

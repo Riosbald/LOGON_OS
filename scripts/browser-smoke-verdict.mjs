@@ -1,24 +1,35 @@
 import { createHash } from "node:crypto";
+
+/** @typedef {{ status?: number, title?: string, hasCanvas?: boolean, horizontalOverflow?: boolean, consoleErrors?: string[], pageErrors?: string[], bodyTextLen?: number, bodyTextHash?: string, bodyTextPrefix?: string }} ViewportVerdict */
+/** @typedef {{ viewports?: Record<string, ViewportVerdict> }} SmokeVerdict */
+/** @typedef {{ BROWSER_SMOKE_BASELINE?: string }} SmokeEnv */
+/** @typedef {{ url?: string, outPng?: string, baseline?: string, error?: string }} SmokeArgs */
+
+/** @param {unknown} text */
 export function normalizeBodyText(text) {
   return String(text ?? "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
+/** @param {unknown} text */
 export function normalizedBodyTextHash(text) {
   return createHash("sha256").update(normalizeBodyText(text)).digest("hex");
 }
 
 const IDENTITY_PREFIX_LEN = 64;
 
+/** @param {unknown} text */
 export function bodyTextPrefix(text) {
   return normalizeBodyText(text).slice(0, IDENTITY_PREFIX_LEN);
 }
+/** @param {string[]} argv @param {SmokeEnv} [env] @returns {SmokeArgs} */
 export function parseSmokeArgs(argv, env = {}) {
   const positional = [];
   let baseline = env.BROWSER_SMOKE_BASELINE || "";
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+    if (arg === undefined) continue;
     if (arg === "--baseline") {
       const value = argv[++i];
       if (!value) return { error: "--baseline requires a path to a prior verdict JSON" };
@@ -39,6 +50,7 @@ export function parseSmokeArgs(argv, env = {}) {
     baseline,
   };
 }
+/** @param {string} outPng */
 export function derivedPaths(outPng) {
   const base = outPng.replace(/\.png$/i, "");
   return { mobilePng: `${base}-mobile.png`, verdictJson: `${base}.json` };
@@ -47,6 +59,7 @@ export function derivedPaths(outPng) {
 const TRIVIAL_LEN_DELTA = 20;
 const TRIVIAL_LEN_RATIO = 0.1;
 const COLLAPSE_RATIO = 0.5;
+/** @param {SmokeVerdict | null | undefined} current @param {SmokeVerdict | null | undefined} baseline */
 export function compareToBaseline(current, baseline) {
   const entries = Object.entries(current?.viewports ?? {});
   if (entries.length === 0) {
@@ -98,6 +111,7 @@ export function compareToBaseline(current, baseline) {
   }
   return { divergesFromBaseline: reasons.length > 0, reasons };
 }
+/** @param {SmokeVerdict | null | undefined} current @param {string} rawText */
 export function baselineComparison(current, rawText) {
   let baseline;
   try {
@@ -117,6 +131,7 @@ export function baselineComparison(current, rawText) {
   }
   return compareToBaseline(current, baseline);
 }
+/** @param {Record<string, ViewportVerdict> | undefined} viewports */
 export function exitCodeFor(viewports) {
   const list = Object.values(viewports ?? {});
   if (list.length === 0) return 1;

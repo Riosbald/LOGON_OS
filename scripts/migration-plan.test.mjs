@@ -19,6 +19,7 @@ const AUTH_MIGRATION = "0001_auth.sql";
  * The auth-on copy of the Better Auth schema and its source, or null when the
  * app has not turned sign-in on (the shipped state).
  */
+/** @param {string} root */
 function authSchemaCopy(root) {
   const copy = join(root, "migrations", AUTH_MIGRATION);
   const source = join(root, "migrations/auth", AUTH_MIGRATION);
@@ -82,9 +83,11 @@ test("the copy check reads both files and catches an edit", () => {
 
   writeFileSync(join(root, "migrations", AUTH_MIGRATION), "create table t ();\n");
   const same = authSchemaCopy(root);
+  if (same === null) throw new Error("expected copied schema");
   assert.equal(same.copy, same.source);
 
   writeFileSync(join(root, "migrations", AUTH_MIGRATION), "create table t (x int);\n");
   const drifted = authSchemaCopy(root);
+  if (drifted === null) throw new Error("expected drifted schema");
   assert.notEqual(drifted.copy, drifted.source);
 });

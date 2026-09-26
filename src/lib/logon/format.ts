@@ -57,11 +57,11 @@ export function statusTone(
 
 export function eventSummary(event: ExecutionEvent): string {
   const payload = event.payload;
-  const reason = typeof payload.reason === "string" ? payload.reason : undefined;
+  const reason = typeof payload["reason"] === "string" ? payload["reason"] : undefined;
 
   switch (event.status) {
     case "INTAKE":
-      return `Kernel accepted the objective for ${String(payload.agentId ?? "the agent")}.`;
+      return `Kernel accepted the objective for ${String(payload["agentId"] ?? "the agent")}.`;
     case "CONTEXT":
       return "Tenant context was gathered from the controlled execution handler.";
     case "POLICY_CHECK":
@@ -71,7 +71,7 @@ export function eventSummary(event: ExecutionEvent): string {
     case "TOOL_PERMISSION_CHECK":
       return reason ?? "Each requested tool was checked against tenant grants.";
     case "ACTION":
-      return payload.committed === false
+      return payload["committed"] === false
         ? "Tools proposed work. Side effects are not committed."
         : "Tool action ran.";
     case "VALIDATION":

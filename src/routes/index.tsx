@@ -19,7 +19,7 @@ function Page() {
   return (
     <SiteShell>
       <section className="mx-auto max-w-[1120px] px-4 pb-16 pt-14 sm:px-6 sm:pt-20">
-        <Eyebrow>LOG_ON OS</Eyebrow>
+        <Eyebrow>FOUNDER / SME OWNER · LOG_ON OS</Eyebrow>
         <h1 className="mt-3 max-w-3xl font-display text-[clamp(2.1rem,5vw,3.4rem)] font-medium leading-[1.05] tracking-[-0.04em]">
           Secure, measurable AI operating systems for African organisations.
         </h1>
@@ -152,6 +152,54 @@ function Page() {
           </div>
           <div className="mt-8">
             <CtaLink to="/systems/business">Explore the systems</CtaLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-ink/8 bg-canvas/50">
+        <div className="mx-auto max-w-[1120px] px-4 py-16 sm:px-6">
+          <Eyebrow>CONTROLLED AUTONOMY</Eyebrow>
+          <h2 className="mt-3 max-w-2xl font-display text-[clamp(1.6rem,3.5vw,2.4rem)] font-medium leading-[1.1] tracking-[-0.03em]">
+            An agent should never be able to do more than it was authorised to do.
+          </h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
+            Connectivity is the easy problem. Authorisation and control of action are the hard ones.
+            Every action passes intake → context → policy → plan → tool permission check → validation
+            → human approval when required → execution → evidence → audit → outcome → evaluation.
+          </p>
+          <div className="mt-8 rounded-[14px] border border-ink/10 bg-paper p-5">
+            <FlowStrip
+              items={["USER/EVENT", "INTAKE", "CONTEXT", "POLICY", "PLAN", "TOOL CHECK", "APPROVAL", "EXECUTE", "EVIDENCE", "LEARN"]}
+              accent={6}
+            />
+          </div>
+          <div className="mt-6">
+            <CtaLink to="/systems/assurance">Read the assurance method</CtaLink>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-ink/8">
+        <div className="mx-auto max-w-[1120px] px-4 py-16 sm:px-6">
+          <Eyebrow>EVIDENCE, NOT CLAIMS</Eyebrow>
+          <h2 className="mt-3 max-w-2xl font-display text-[clamp(1.6rem,3.5vw,2.4rem)] font-medium leading-[1.1] tracking-[-0.03em]">
+            We publish the specification, the benchmark and the failure analysis.
+          </h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
+            Technical specifications. Benchmarks. Agent traces. Failure analyses. Evaluation datasets.
+            Before-and-after evidence when it exists. Security reviews. Credibility comes from showing
+            what we built, what broke and what changed because of it.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {["Specs", "Benchmarks", "Build logs", "Deployments"].map((item) => (
+              <div key={item} className="rounded-[12px] border border-ink/10 bg-canvas/70 p-4">
+                <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">{item}</div>
+                <p className="mt-2 text-[12px] text-muted">A linkable artefact, not a claim.</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6">
+            <CtaLink to="/research">Read the research</CtaLink>
           </div>
         </div>
       </section>

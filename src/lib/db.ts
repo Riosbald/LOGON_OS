@@ -6,7 +6,7 @@ export type DbSource = "neon" | "pglite";
 // An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
 // "unset" — otherwise production would silently run on the PGLite fallback.
 const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
+  typeof process !== "undefined" ? process.env["DATABASE_URL"] : undefined;
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
@@ -45,9 +45,9 @@ export interface Sql {
  * `getSql()`). A failed init clears its slot so the next call retries.
  */
 const globalRef = globalThis as typeof globalThis & {
-  __pgSqlPromise__?: Promise<Sql>;
-  __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
-  __pgliteMigrateChain__?: Promise<void>;
+  __pgSqlPromise__?: Promise<Sql> | undefined;
+  __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite> | undefined;
+  __pgliteMigrateChain__?: Promise<void> | undefined;
 };
 
 /**
@@ -76,8 +76,14 @@ function toSql(run: Run): Sql {
     ...values: unknown[]
   ): Promise<T[]> => {
     // Rebuild with $1, $2, … placeholders so values stay parameterized.
-    let text = strings[0];
-    for (let i = 0; i < values.length; i += 1) text += `$${i + 1}${strings[i + 1]}`;
+    let text = strings[0] ?? "";
+    for (let i = 0; i < values.length; i += 1) {
+      const segment = strings[i + 1];
+      if (segment === undefined) {
+        throw new Error(`Malformed SQL template at interpolation ${i}`);
+      }
+      text += `$${i + 1}${segment}`;
+    }
     return run<T>(text, values);
   }) as unknown as Sql;
   sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
@@ -86,6 +92,9 @@ function toSql(run: Run): Sql {
 }
 
 function createNeonSql(): Promise<Sql> {
+  if (!databaseUrl) {
+    throw new Error("createNeonSql() requires DATABASE_URL");
+  }
   globalRef.__pgSqlPromise__ ??= (async () => {
     // Regular Postgres driver: node-postgres (`pg`) — works directly with Neon's
     // pooled endpoint. One pool per process; warm serverless instances reuse it.
@@ -150,7 +159,11 @@ async function createPgliteSql(): Promise<Sql> {
       // Apply + record atomically (parity with scripts/migrate.mjs) so a failed
       // statement can't leave a file half-applied but untracked.
       await pg.transaction(async (tx) => {
-        await tx.exec(migrations[path]);
+        const migrationSql = migrations[path];
+        if (migrationSql === undefined) {
+          throw new Error(`Migration file is missing: ${path}`);
+        }
+        await tx.exec(migrationSql);
         await tx.query("insert into _migrations (name) values ($1)", [name]);
       });
     }
@@ -227,7 +240,7 @@ export function ensureDbReady(): Promise<void> {
 // Server-only eager start: kick PGLite bootstrap as soon as this module loads in
 // Node. Client bundles never hit this path (`getSql` throws in the browser).
 const globalBoot = globalThis as typeof globalThis & {
-  __pgBootstrapPromise__?: Promise<void>;
+  __pgBootstrapPromise__?: Promise<void> | undefined;
 };
 if (typeof window === "undefined" && dbSource === "pglite") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {

@@ -39,7 +39,7 @@ async function emitSessionCookie(
   const maxAge = ctx.context.sessionConfig.expiresIn;
   const cookieOptions = {
     ...attributes,
-    maxAge,
+    ...(typeof maxAge === "number" ? { maxAge } : {}),
   };
 
   let signedCookie: string;
@@ -73,8 +73,8 @@ async function emitSessionCookie(
       httpOnly: cookieOptions.httpOnly ?? true,
       secure: cookieOptions.secure ?? true,
       sameSite: (cookieOptions.sameSite as "lax" | "strict" | "none") ?? "lax",
-      maxAge: typeof maxAge === "number" ? maxAge : undefined,
-      domain: cookieOptions.domain,
+      ...(typeof maxAge === "number" ? { maxAge } : {}),
+      ...(cookieOptions.domain ? { domain: cookieOptions.domain } : {}),
     });
   } catch (err) {
     console.error(`${LOG} TanStack setCookie failed`, err);
@@ -159,7 +159,7 @@ async function writeGateMarkerCookie(
       httpOnly: false,
       secure: true,
       sameSite: "lax",
-      maxAge,
+      ...(typeof maxAge === "number" ? { maxAge } : {}),
     });
   } catch (err) {
     console.error(`${LOG} TanStack setCookie (gate marker) failed`, err);

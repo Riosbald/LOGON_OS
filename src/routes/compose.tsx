@@ -51,7 +51,7 @@ const PRESETS = [
 function ComposePage() {
   const navigate = useNavigate();
   const start = useLogonStore((state) => state.start);
-  const [agentId, setAgentId] = useState(AGENTS[0].agentId);
+  const [agentId, setAgentId] = useState(AGENTS[0]?.agentId ?? "finance.auditor");
   const [objective, setObjective] = useState(
     "Audit vendor invoices for duplicate payments and recommend a recovery action",
   );

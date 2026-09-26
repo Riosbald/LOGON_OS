@@ -19,7 +19,7 @@ test("a registered tool does not grant permission", () => {
   for (let i = 0; i < 8; i += 1) {
     state = advanceExecution(state, started.executionId, 2 + i);
   }
-  const execution = state.executions[started.executionId];
+  const execution = state.executions[started.executionId]!;
   assert.equal(execution.status, "FAILED");
   assert.equal(execution.failureType, "PERMISSION_DENIAL");
 });
@@ -39,7 +39,7 @@ test("high-impact tools propose, then wait for approval before committing", () =
   for (let i = 0; i < 10; i += 1) {
     state = advanceExecution(state, started.executionId, 2 + i);
   }
-  const execution = state.executions[started.executionId];
+  const execution = state.executions[started.executionId]!;
   assert.equal(execution.status, "APPROVAL");
   const toolEvidence = state.evidence.filter(
     (item) => item.executionId === started.executionId && item.kind === "TOOL_RESULT",
@@ -76,7 +76,7 @@ test("approval commits tool evidence; rejection does not", () => {
     (item) => item.executionId === started.executionId && item.kind === "TOOL_RESULT",
   );
   assert.ok(committed.length >= 1);
-  assert.equal(state.executions[started.executionId].status, "LEARNING");
+  assert.equal(state.executions[started.executionId]!.status, "LEARNING");
 });
 
 test("deny-all fails closed at intake", () => {
@@ -90,8 +90,8 @@ test("deny-all fails closed at intake", () => {
     },
     1,
   );
-  assert.equal(started.state.executions[started.executionId].status, "REJECTED");
-  assert.equal(started.state.executions[started.executionId].failureType, "POLICY_DENIAL");
+  assert.equal(started.state.executions[started.executionId]!.status, "REJECTED");
+  assert.equal(started.state.executions[started.executionId]!.failureType, "POLICY_DENIAL");
 });
 
 test("failed work cannot silently become success", () => {
@@ -116,12 +116,12 @@ test("expired approvals reject the execution", () => {
   for (let i = 0; i < 10; i += 1) {
     state = advanceExecution(state, started.executionId, 2 + i);
   }
-  assert.equal(state.executions[started.executionId].status, "APPROVAL");
+  assert.equal(state.executions[started.executionId]!.status, "APPROVAL");
   const approval = state.approvals.find((item) => item.status === "PENDING");
   assert.ok(approval?.expiresAt);
   const later = Date.parse(approval.expiresAt) + 1000;
   state = expireApprovals(state, later);
   assert.equal(state.approvals.find((item) => item.approvalId === approval.approvalId)?.status, "EXPIRED");
-  assert.equal(state.executions[started.executionId].status, "REJECTED");
-  assert.equal(state.executions[started.executionId].failureType, "TIMEOUT");
+  assert.equal(state.executions[started.executionId]!.status, "REJECTED");
+  assert.equal(state.executions[started.executionId]!.failureType, "TIMEOUT");
 });

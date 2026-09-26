@@ -7,6 +7,15 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+/** @typedef {import("node:http").IncomingMessage} IncomingMessage */
+/** @typedef {import("node:http").ServerResponse} ServerResponse */
+/** @typedef {import("vite").Connect.NextFunction} NextFunction */
+/** @typedef {import("vite").Connect.Server} MiddlewareServer */
+/** @typedef {import("vite").ResolvedConfig} ResolvedConfig */
+/** @typedef {import("vite").ViteDevServer} ViteDevServer */
+/** @typedef {import("vite").PreviewServer} VitePreviewServer */
+/** @typedef {import("vite").Plugin} VitePlugin */
+
 import {
   acceptsHtml,
   createHeadInjector,
@@ -22,17 +31,20 @@ export const GROK_OG_IDENTITY_ID = "virtual:grok-og-identity";
 
 const INSTALL_PAGE_PATH = join(dirname(fileURLToPath(import.meta.url)), "install-page.html");
 
+/** @param {IncomingMessage} req */
 function requestHost(req) {
   const forwarded = req.headers["x-forwarded-host"];
   const host = forwarded ?? req.headers.host ?? req.headers[":authority"];
   return Array.isArray(host) ? host[0] : host;
 }
 
+/** @param {string | null | undefined} hostHeader @param {string} [url] */
 export function renderInstallPage(hostHeader, url = "/") {
   const template = readFileSync(INSTALL_PAGE_PATH, "utf8");
-  return renderInstallPageHtml(template, { host: hostHeader, url });
+  return renderInstallPageHtml(template, { host: hostHeader ?? null, url });
 }
 
+/** @param {ServerResponse} res @param {string} html */
 function sendHtml(res, html) {
   const body = Buffer.from(html, "utf8");
   res.statusCode = 200;
@@ -42,8 +54,9 @@ function sendHtml(res, html) {
   res.end(body);
 }
 
+/** @param {MiddlewareServer} middlewares */
 function serveGrokPwa(middlewares) {
-  middlewares.use((req, res, next) => {
+  middlewares.use(/** @param {IncomingMessage} req @param {ServerResponse} res @param {NextFunction} next */ (req, res, next) => {
     const rawUrl = req.url ?? "";
     const pathOnly = rawUrl.split("?", 1)[0] ?? "";
     const method = (req.method ?? "GET").toUpperCase();
@@ -84,8 +97,9 @@ function serveGrokPwa(middlewares) {
  * content-encoded: under `vite preview` the compression middleware can hand
  * this wrapper gzipped bytes, which must pass through untouched.
  */
+/** @param {MiddlewareServer} middlewares @param {string} cwd */
 function wrapHtmlResponses(middlewares, cwd) {
-  middlewares.use((req, res, next) => {
+  middlewares.use(/** @param {IncomingMessage} req @param {ServerResponse} res @param {NextFunction} next */ (req, res, next) => {
     const rawUrl = req.url ?? "";
     const pathOnly = rawUrl.split("?", 1)[0] ?? "";
     const method = (req.method ?? "GET").toUpperCase();
@@ -103,9 +117,10 @@ function wrapHtmlResponses(middlewares, cwd) {
     const originalEnd = res.end.bind(res);
     const host = requestHost(req);
     const injector = createHeadInjector({
-      host,
+      host: host ?? "",
       cwd,
     });
+    /** @type {"inject" | "passthrough" | null} */
     let mode = null; // null = undecided, "inject" | "passthrough"
 
     const decideMode = () => {
@@ -119,64 +134,81 @@ function wrapHtmlResponses(middlewares, cwd) {
       return mode;
     };
 
-    const toBuffer = (chunk, encoding) => {
+/** @param {string | Uint8Array | null | undefined} chunk @param {BufferEncoding} [encoding] */
+    const toBuffer = (chunk, encoding = "utf8") => {
       if (Buffer.isBuffer(chunk)) return chunk;
       if (typeof chunk === "string") {
-        return Buffer.from(chunk, typeof encoding === "string" ? encoding : "utf8");
+        return Buffer.from(chunk, encoding);
       }
+      if (chunk === undefined || chunk === null) return Buffer.alloc(0);
       return Buffer.from(chunk);
     };
 
-    res.write = (chunk, encoding, cb) => {
-      if (decideMode() === "passthrough") return originalWrite(chunk, encoding, cb);
-      const done = typeof encoding === "function" ? encoding : cb;
-      if (chunk) {
-        for (const out of injector.push(toBuffer(chunk, encoding))) originalWrite(out);
+    res.write = /** @type {typeof res.write} */ ((chunk, encoding, cb) => {
+      if (decideMode() === "passthrough") {
+        return typeof encoding === "function"
+          ? originalWrite(chunk, encoding)
+          : originalWrite(chunk, encoding, cb);
       }
-      if (typeof done === "function") done();
-      return true;
-    };
-
-    res.end = (chunk, encoding, cb) => {
       const done = typeof encoding === "function" ? encoding : cb;
-      if (decideMode() === "passthrough") return originalEnd(chunk, encoding, cb);
       if (chunk) {
-        for (const out of injector.push(toBuffer(chunk, encoding))) originalWrite(out);
+        for (const out of injector.push(toBuffer(chunk, typeof encoding === "string" ? encoding : undefined))) originalWrite(out);
+      }
+      if (typeof done === "function") done(undefined);
+      return true;
+    });
+
+    res.end = /** @type {typeof res.end} */ ((chunk, encoding, cb) => {
+      const done = typeof encoding === "function" ? encoding : cb;
+      if (decideMode() === "passthrough") {
+        return typeof encoding === "function"
+          ? originalEnd(chunk, encoding)
+          : originalEnd(chunk, encoding, cb);
+      }
+      if (chunk) {
+        for (const out of injector.push(toBuffer(chunk, typeof encoding === "string" ? encoding : undefined))) originalWrite(out);
       }
       for (const out of injector.flush()) originalWrite(out);
-      return originalEnd(undefined, undefined, done);
-    };
+      return originalEnd(done);
+    });
 
     next();
   });
 }
 
+/** @returns {VitePlugin} */
 export function grokPwaPlugin() {
   let root = process.cwd();
   return {
     name: "app-builder:grok-pwa",
+    /** @param {ResolvedConfig} config */
     configResolved(config) {
       root = config.root;
     },
+    /** @param {string} id */
     resolveId(id) {
       if (id === GROK_OG_IDENTITY_ID) return `\0${GROK_OG_IDENTITY_ID}`;
     },
+    /** @param {string} id */
     load(id) {
       if (id !== `\0${GROK_OG_IDENTITY_ID}`) return;
       return `export const grokOgIdentity = ${JSON.stringify(snapshotOgIdentity(root))};`;
     },
+    /** @param {string} html */
     transformIndexHtml(html) {
       return injectGrokPwaHead(html, {
-        host: process.env.VITE_PUBLIC_HOSTNAME ?? "",
+        host: process.env["VITE_PUBLIC_HOSTNAME"] ?? "",
         cwd: root,
       });
     },
+    /** @param {ViteDevServer} server */
     configureServer(server) {
       // Registered directly (not in a returned post-hook) so both run BEFORE
       // TanStack Start's SSR middleware, like the auth-popup plugin.
       serveGrokPwa(server.middlewares);
       wrapHtmlResponses(server.middlewares, root);
     },
+    /** @param {VitePreviewServer} server */
     configurePreviewServer(server) {
       serveGrokPwa(server.middlewares);
       // Post-hook: preview registers compression between the direct hooks and

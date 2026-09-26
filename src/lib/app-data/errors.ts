@@ -12,7 +12,7 @@ export type CallToolErrorKind =
 export type CallToolErrorState = {
   kind: CallToolErrorKind;
   message: string;
-  detail?: string;
+  detail: string | undefined;
 };
 
 type MessageRule = {

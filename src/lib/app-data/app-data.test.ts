@@ -38,7 +38,7 @@ async function withStubbedGate(
   body: Record<string, unknown>,
   run: (calls: () => number) => Promise<void>,
 ): Promise<void> {
-  process.env.GROK_CONNECTORS_URL = "https://connectors.invalid.example";
+  process.env["GROK_CONNECTORS_URL"] = "https://connectors.invalid.example";
   const realFetch = globalThis.fetch;
   let calls = 0;
   globalThis.fetch = (async () => {
@@ -49,7 +49,7 @@ async function withStubbedGate(
     await run(() => calls);
   } finally {
     globalThis.fetch = realFetch;
-    delete process.env.GROK_CONNECTORS_URL;
+    delete process.env["GROK_CONNECTORS_URL"];
   }
 }
 
@@ -131,7 +131,7 @@ describe("callTool failure memo", () => {
   });
 
   it("never memoizes login-required 401s", async () => {
-    process.env.GROK_PROJECT_ID = "proj-1";
+    process.env["GROK_PROJECT_ID"] = "proj-1";
     try {
       await withStubbedGate(401, { errorMessage: "login required" }, async (calls) => {
         const options = {
@@ -146,26 +146,26 @@ describe("callTool failure memo", () => {
         assert.equal(calls(), 2);
       });
     } finally {
-      delete process.env.GROK_PROJECT_ID;
+      delete process.env["GROK_PROJECT_ID"];
     }
   });
 });
 
 describe("callTool in the workspace preview vs deployed", () => {
   const options = { connectorType: ConnectorType.GoogleDrive };
-  const savedEnvToken = process.env.GROK_CONNECTOR_ACCESS_TOKEN;
+  const savedEnvToken = process.env["GROK_CONNECTOR_ACCESS_TOKEN"];
 
   beforeEach(() => {
-    delete process.env.GROK_CONNECTOR_ACCESS_TOKEN;
-    delete process.env.GROK_PROJECT_ID;
+    delete process.env["GROK_CONNECTOR_ACCESS_TOKEN"];
+    delete process.env["GROK_PROJECT_ID"];
   });
   afterEach(() => {
     if (savedEnvToken === undefined) {
-      delete process.env.GROK_CONNECTOR_ACCESS_TOKEN;
+      delete process.env["GROK_CONNECTOR_ACCESS_TOKEN"];
     } else {
-      process.env.GROK_CONNECTOR_ACCESS_TOKEN = savedEnvToken;
+      process.env["GROK_CONNECTOR_ACCESS_TOKEN"] = savedEnvToken;
     }
-    delete process.env.GROK_PROJECT_ID;
+    delete process.env["GROK_PROJECT_ID"];
   });
 
   it("returns pending (no loginRequired) when the preview has no token yet", async () => {
@@ -177,7 +177,7 @@ describe("callTool in the workspace preview vs deployed", () => {
   });
 
   it("returns a plain error (no sign-in CTA) when a deployed app has no token", async () => {
-    process.env.GROK_PROJECT_ID = "proj-1";
+    process.env["GROK_PROJECT_ID"] = "proj-1";
     const result = await callTool("google_drive_search", {}, options);
     assert.equal(result.ok, false);
     assert.equal(result.loginRequired, undefined);
@@ -188,7 +188,7 @@ describe("callTool in the workspace preview vs deployed", () => {
 
   it("treats a gate 401 in the preview as pending and parks the rejected token", async () => {
     await withStubbedGate(401, { errorMessage: "login required" }, async (calls) => {
-      process.env.GROK_CONNECTOR_ACCESS_TOKEN = fakeJwt({ sub: "p", iat: 1, exp: 2 });
+      process.env["GROK_CONNECTOR_ACCESS_TOKEN"] = fakeJwt({ sub: "p", iat: 1, exp: 2 });
       assert.equal(isConnectorTokenReady(), true);
 
       const result = await callTool("google_drive_search", {}, options);
@@ -198,13 +198,13 @@ describe("callTool in the workspace preview vs deployed", () => {
       assert.equal(calls(), 1);
       assert.equal(isConnectorTokenReady(), false);
 
-      process.env.GROK_CONNECTOR_ACCESS_TOKEN = fakeJwt({ sub: "p", iat: 3, exp: 4 });
+      process.env["GROK_CONNECTOR_ACCESS_TOKEN"] = fakeJwt({ sub: "p", iat: 3, exp: 4 });
       assert.equal(isConnectorTokenReady(), true);
     });
   });
 
   it("keeps loginRequired for a gate 401 on a deployed app", async () => {
-    process.env.GROK_PROJECT_ID = "proj-1";
+    process.env["GROK_PROJECT_ID"] = "proj-1";
     await withStubbedGate(401, { errorMessage: "login required" }, async () => {
       const result = await callTool("google_drive_search", {}, {
         ...options,
@@ -218,10 +218,10 @@ describe("callTool in the workspace preview vs deployed", () => {
 
 describe("callTool", () => {
   it("resolves ok:false for non-serializable args instead of rejecting", async () => {
-    process.env.GROK_CONNECTORS_URL = "https://connectors.invalid.example";
+    process.env["GROK_CONNECTORS_URL"] = "https://connectors.invalid.example";
     try {
       const circular: Record<string, unknown> = {};
-      circular.self = circular;
+      circular["self"] = circular;
       const result = await callTool(
         "google_drive_search",
         circular as ToolArgs,
@@ -233,7 +233,7 @@ describe("callTool", () => {
       assert.equal(result.ok, false);
       assert.match(result.errorMessage ?? "", /circular/i);
     } finally {
-      delete process.env.GROK_CONNECTORS_URL;
+      delete process.env["GROK_CONNECTORS_URL"];
     }
   });
 });

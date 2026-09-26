@@ -13,7 +13,7 @@ const outPng = checkedOutputPath(process.argv[3] || "/tmp/preview-thumbnail.png"
   "/tmp",
   "/workspace",
 ]);
-const timeoutMs = Number(process.env.PREVIEW_THUMBNAIL_TIMEOUT_MS || 45000);
+const timeoutMs = Number(process.env["PREVIEW_THUMBNAIL_TIMEOUT_MS"] || 45000);
 
 const browser = await chromium.launch({
   headless: true,
@@ -33,7 +33,7 @@ try {
 
   console.log(JSON.stringify({ url, status, screenshot: outPng }, null, 2));
 } catch (err) {
-  console.error(JSON.stringify({ ok: false, url, error: String(err?.message || err) }, null, 2));
+  console.error(JSON.stringify({ ok: false, url, error: String(err instanceof Error ? err.message : err) }, null, 2));
   // Set the code rather than process.exit() so the `finally` browser teardown
   // always runs (avoids leaking Chromium across repeated capture calls).
   process.exitCode = 1;

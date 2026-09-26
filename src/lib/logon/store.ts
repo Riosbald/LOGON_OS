@@ -16,12 +16,12 @@ function pickSelected(executions: KernelSnapshot["executions"], fallback?: strin
 interface LogonStore extends KernelSnapshot {
   hydrated: boolean;
   autoRun: boolean;
-  selectedId?: string;
+  selectedId: string | undefined;
   ensureSeeded: () => void;
-  setSelected: (executionId?: string) => void;
+  setSelected: (executionId: string | undefined) => void;
   setAutoRun: (value: boolean) => void;
   tick: () => void;
-  step: (executionId?: string) => void;
+  step: (executionId: string | undefined) => void;
   start: (input: StartInput) => string;
   approve: (approvalId: string, status: "APPROVED" | "REJECTED", reason?: string) => void;
   resetDemo: () => void;

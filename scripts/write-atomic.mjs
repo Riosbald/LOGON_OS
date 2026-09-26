@@ -18,6 +18,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+/** @typedef {{ staged?: string, target?: string, error?: string }} WriteAtomicArgs */
+/** @typedef {{ staged: string, target: string, publicDir: string }} StagingPaths */
+
+/** @param {string[]} argv @returns {WriteAtomicArgs} */
 export function parseWriteAtomicArgs(argv) {
   const [staged, target, ...rest] = argv;
   if (!staged || !target) {
@@ -27,6 +31,7 @@ export function parseWriteAtomicArgs(argv) {
   return { staged, target };
 }
 
+/** @param {string} dir @param {string} file */
 function isInside(dir, file) {
   const rel = relative(dir, file);
   return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
@@ -37,6 +42,7 @@ function isInside(dir, file) {
  * the deployed app, so a temp that lands there ships (and an interrupted run
  * leaves it behind).
  */
+/** @param {StagingPaths} paths @returns {string | null} */
 export function stagingError({ staged, target, publicDir }) {
   if (staged === target) return `staged file and target are the same path: ${target}`;
   if (isInside(publicDir, staged)) {
@@ -50,6 +56,7 @@ export function stagingError({ staged, target, publicDir }) {
  * `rename` is injectable because EXDEV — the refusal the "stage under
  * /workspace/.grok/" contract rests on — cannot be provoked portably.
  */
+/** @param {string} staged @param {string} target @param {{ rename?: (oldPath: string, newPath: string) => void }} [options] */
 export function handOver(staged, target, { rename = renameSync } = {}) {
   if (!existsSync(staged)) {
     throw Object.assign(new Error(`staged file is missing: ${staged}`), { code: "ENOENT" });
@@ -58,7 +65,8 @@ export function handOver(staged, target, { rename = renameSync } = {}) {
   try {
     rename(staged, target);
   } catch (err) {
-    if (err?.code === "EXDEV") {
+    const code = err instanceof Error && "code" in err ? err.code : undefined;
+    if (code === "EXDEV") {
       throw new Error(
         `${staged} is on another filesystem than ${target}, so the hand-over cannot be a `
           + "rename — stage under /workspace/.grok/ instead",
@@ -77,8 +85,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // Relative paths follow this script's root, not the caller's cwd: the brand
   // pass runs from wherever its sub-shell left it, and the public/ refusal
   // below is defined against that same root.
-  const staged = resolve(ROOT, args.staged);
-  const target = resolve(ROOT, args.target);
+  const stagedArg = args.staged;
+  const targetArg = args.target;
+  if (stagedArg === undefined || targetArg === undefined) {
+    throw new Error("write-atomic arguments are incomplete");
+  }
+  const staged = resolve(ROOT, stagedArg);
+  const target = resolve(ROOT, targetArg);
   const problem = stagingError({ staged, target, publicDir: join(ROOT, "public") });
   if (problem) {
     console.error(`[write-atomic] ${problem}`);
@@ -87,7 +100,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     handOver(staged, target);
   } catch (err) {
-    console.error(`[write-atomic] ${staged} → ${target} failed: ${err?.message || err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[write-atomic] ${staged} → ${target} failed: ${message}`);
     process.exit(1);
   }
   console.log(`[write-atomic] wrote ${target}`);

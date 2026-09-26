@@ -71,7 +71,7 @@ interface PeerSlot {
   /** One-shot: pc was already recreated to absorb a failing remote offer. */
   recreatedForOffer?: boolean;
   info: PeerInfo;
-  pingSentAt?: number;
+  pingSentAt?: number | undefined;
 }
 
 const FAST_POLL_MS = 400;
@@ -82,7 +82,7 @@ const MAX_RECOVERY_ATTEMPTS = 3;
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];
 
 export function defaultIceServers(): RTCIceServer[] {
-  const urls = (import.meta.env.VITE_STUN_URLS as string | undefined)
+  const urls = (import.meta.env["VITE_STUN_URLS"] as string | undefined)
     ?.split(",")
     .map((u) => u.trim())
     .filter(Boolean);

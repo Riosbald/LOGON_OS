@@ -11,6 +11,16 @@ import {
   terminatePids,
 } from "./preview.mjs";
 
+/** @param {number} sl @param {string} local @param {string} state @param {number} inode */
+const tcpRow = (sl, local, state, inode) =>
+  [
+    `  ${sl}:`, local, "00000000:0000", state, "00000000:00000000", "00:00000000",
+    "00000000", "1000", "0", String(inode), "1", "0000", "100",
+  ].join(" ");
+
+/** @param {...string} argv */
+const cmdline = (...argv) => argv.join("\u0000");
+
 test("parsePreviewArgs accepts the two actions", () => {
   for (const action of ["stop", "restart"]) {
     assert.deepEqual(parsePreviewArgs([action]), { action });
@@ -18,10 +28,10 @@ test("parsePreviewArgs accepts the two actions", () => {
 });
 
 test("parsePreviewArgs rejects missing, unknown and extra arguments", () => {
-  assert.match(parsePreviewArgs([]).error, /usage:/);
-  assert.match(parsePreviewArgs(["reload"]).error, /unknown action: reload/);
-  assert.match(parsePreviewArgs(["start"]).error, /unknown action: start/);
-  assert.match(parsePreviewArgs(["restart", "--force"]).error, /unexpected argument: --force/);
+  assert.match(parsePreviewArgs([]).error ?? "", /usage:/);
+  assert.match(parsePreviewArgs(["reload"]).error ?? "", /unknown action: reload/);
+  assert.match(parsePreviewArgs(["start"]).error ?? "", /unknown action: start/);
+  assert.match(parsePreviewArgs(["restart", "--force"]).error ?? "", /unexpected argument: --force/);
 });
 
 test("parsePid reads a pidfile and rejects junk", () => {
@@ -42,24 +52,6 @@ test("parsePgid reads the pgrp field past a comm containing spaces", () => {
   assert.equal(parsePgid(""), null);
   assert.equal(parsePgid(undefined), null);
 });
-
-// One /proc/net/tcp row; the socket inode is column 10.
-const tcpRow = (sl, local, state, inode) =>
-  [
-    `  ${sl}:`,
-    local,
-    "00000000:0000",
-    state,
-    "00000000:00000000",
-    "00:00000000",
-    "00000000",
-    "1000",
-    "0",
-    inode,
-    "1",
-    "0000",
-    "100",
-  ].join(" ");
 
 const PROC_NET_TCP = [
   "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt uid timeout inode",
@@ -82,9 +74,6 @@ test("parseListenerInodes reads the tcp6 dump the same way", () => {
   const v6 = "00000000000000000000000000000000:1F91";
   assert.deepEqual(parseListenerInodes(tcpRow(0, v6, "0A", 7777), 8081), ["7777"]);
 });
-
-// /proc/<pid>/cmdline is NUL-separated.
-const cmdline = (...argv) => argv.join("\u0000");
 
 test("looksLikePreviewProcess matches the npm wrapper and its vite child", () => {
   const npmRun = cmdline("node", "/usr/lib/node_modules/npm/bin/npm-cli.js", "run", "preview");
@@ -165,7 +154,7 @@ test("stopOutcome fails when a pid survives or the port is still held", () => {
     after: { pids: [] },
   });
   assert.equal(stubbornOnly.ok, false);
-  assert.match(stubbornOnly.error, /still held by pid\(s\) 50/);
+  assert.match(stubbornOnly.error ?? "", /still held by pid\(s\) 50/);
 
   const newOwner = stopOutcome({
     signalled: [50],
@@ -173,7 +162,7 @@ test("stopOutcome fails when a pid survives or the port is still held", () => {
     after: { pids: [77] },
   });
   assert.equal(newOwner.ok, false);
-  assert.match(newOwner.error, /still held by pid\(s\) 77/);
+  assert.match(newOwner.error ?? "", /still held by pid\(s\) 77/);
 });
 
 test("stopOutcome reports a verified free port", () => {
@@ -183,11 +172,11 @@ test("stopOutcome reports a verified free port", () => {
     after: { pids: [] },
   });
   assert.equal(stopped.ok, true);
-  assert.match(stopped.message, /stopped pid\(s\) 50 — port 8081 is free/);
+  assert.match(stopped.message ?? "", /stopped pid\(s\) 50 — port 8081 is free/);
 
   const idle = stopOutcome({ signalled: [], stubborn: [], after: { pids: [] } });
   assert.equal(idle.ok, true);
-  assert.match(idle.message, /nothing was listening on 8081/);
+  assert.match(idle.message ?? "", /nothing was listening on 8081/);
 });
 
 test("stopOutcome fails on a listener whose owner cannot be attributed", () => {
@@ -197,16 +186,18 @@ test("stopOutcome fails on a listener whose owner cannot be attributed", () => {
     after: { pids: [], unattributed: true },
   });
   assert.equal(outcome.ok, false);
-  assert.match(outcome.error, /port 8081 is held by a process this script cannot see/);
+  assert.match(outcome.error ?? "", /port 8081 is held by a process this script cannot see/);
 });
 
+/** @param {{ pids: number[], ignoresTerm?: number[] }} options */
 function fakeProcesses({ pids, ignoresTerm = [] }) {
   const alive = new Set(pids);
+  /** @type {Array<[number, NodeJS.Signals]>} */
   const signals = [];
   return {
     signals,
-    isAlive: (pid) => alive.has(pid),
-    kill: (pid, signal) => {
+    isAlive: /** @param {number} pid */ (pid) => alive.has(pid),
+    kill: /** @param {number} pid @param {NodeJS.Signals} signal */ (pid, signal) => {
       signals.push([pid, signal]);
       if (signal === "SIGKILL" || !ignoresTerm.includes(pid)) alive.delete(pid);
     },
@@ -236,6 +227,7 @@ test("terminatePids escalates to SIGKILL when SIGTERM is ignored", async () => {
 });
 
 test("terminatePids reports a pid that survives SIGKILL as stubborn", async () => {
+  /** @type {Array<[number, NodeJS.Signals]>} */
   const signals = [];
   const result = await terminatePids([11], {
     isAlive: () => true,

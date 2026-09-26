@@ -17,6 +17,7 @@ import { handOver, parseWriteAtomicArgs, stagingError } from "./write-atomic.mjs
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(TEMPLATE_ROOT, "scripts/write-atomic.mjs");
 
+/** @returns {string} */
 function makeWorkspace() {
   const root = mkdtempSync(join(tmpdir(), "write-atomic-"));
   mkdirSync(join(root, "public"), { recursive: true });
@@ -24,14 +25,20 @@ function makeWorkspace() {
   return root;
 }
 
+/** @param {string | undefined} value @returns {string} */
+function required(value) {
+  assert.ok(value);
+  return value;
+}
+
 test("parseWriteAtomicArgs needs exactly a staged file and a target", () => {
   assert.deepEqual(parseWriteAtomicArgs([".grok/og.tmp", "public/og.jpg"]), {
     staged: ".grok/og.tmp",
     target: "public/og.jpg",
   });
-  assert.match(parseWriteAtomicArgs([]).error, /usage:/);
-  assert.match(parseWriteAtomicArgs([".grok/og.tmp"]).error, /usage:/);
-  assert.match(parseWriteAtomicArgs(["a", "b", "c"]).error, /unexpected argument: c/);
+  assert.match(required(parseWriteAtomicArgs([]).error), /usage:/);
+  assert.match(required(parseWriteAtomicArgs([".grok/og.tmp"]).error), /usage:/);
+  assert.match(required(parseWriteAtomicArgs(["a", "b", "c"]).error), /unexpected argument: c/);
 });
 
 test("stagingError refuses a temp inside public/ and a no-op move", () => {
@@ -49,7 +56,7 @@ test("stagingError refuses a temp inside public/ and a no-op move", () => {
       staged: "/workspace/public/og.jpg.tmp",
       target: "/workspace/public/og.jpg",
       publicDir,
-    }),
+    }) ?? "",
     /vite build ships that directory verbatim/,
   );
   assert.match(
@@ -57,7 +64,7 @@ test("stagingError refuses a temp inside public/ and a no-op move", () => {
       staged: "/workspace/public/og.jpg",
       target: "/workspace/public/og.jpg",
       publicDir,
-    }),
+    }) ?? "",
     /same path/,
   );
 });
@@ -180,7 +187,7 @@ test("every hand-over the og skill prints is one this script accepts", () => {
     const args = parseWriteAtomicArgs(argv);
     assert.equal(args.error, undefined, line);
     assert.equal(
-      stagingError({ staged: args.staged, target: args.target, publicDir: "/workspace/public" }),
+      stagingError({ staged: args.staged ?? "", target: args.target ?? "", publicDir: "/workspace/public" }),
       null,
       line,
     );

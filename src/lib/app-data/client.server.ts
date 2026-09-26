@@ -63,7 +63,7 @@ function inboundContext(): InboundContext {
     (xf || req?.headers.get("host") || "").split(":")[0]?.trim() || null;
   const headerToken = req?.headers.get(CONNECTOR_TOKEN_HEADER)?.trim() || null;
   const envToken =
-    process.env.NODE_ENV === "production"
+    process.env["NODE_ENV"] === "production"
       ? null
       : (env("GROK_CONNECTOR_ACCESS_TOKEN") ?? null);
   return {
@@ -278,7 +278,9 @@ function tokenIdentityKey(token: string): string {
             .digest("base64url");
         }
       }
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
   return createHash("sha256").update(token).digest("base64url");
 }

@@ -111,9 +111,9 @@ export async function verifyGateIdentityToken(
     if (!sub) return null;
     return {
       sub,
-      email: typeof payload.email === "string" ? payload.email : null,
-      name: typeof payload.name === "string" ? payload.name : null,
-      teamId: typeof payload.team_id === "string" ? payload.team_id : null,
+      email: typeof payload["email"] === "string" ? payload["email"] : null,
+      name: typeof payload["name"] === "string" ? payload["name"] : null,
+      teamId: typeof payload["team_id"] === "string" ? payload["team_id"] : null,
     };
   } catch {
     return null;

@@ -22,6 +22,8 @@ const GAME_SITE = JSON.stringify({ title: "Wild Race", type: "x:game", card: "cu
 const UTILITY_SITE = JSON.stringify({ title: "Invoice" });
 const UTILITY_CUSTOM_SITE = JSON.stringify({ title: "Invoice", card: "custom" });
 
+/** @typedef {{ siteJson?: string, cardFile?: string, narrowFile?: string, cardBytes?: number, narrowBytes?: number, pendingAgeMs?: number }} WorkspaceOptions */
+/** @param {WorkspaceOptions} [options] @returns {string} */
 function makeWorkspace({
   siteJson,
   cardFile,
@@ -52,13 +54,20 @@ function makeWorkspace({
   return root;
 }
 
+/** @param {string[]} values @param {number} index @returns {string} */
+function required(values, index) {
+  const value = values[index];
+  assert.ok(value, `missing test value at index ${index}`);
+  return value;
+}
+
 test("non-canvas app with no custom card gets a soft BRAND NOTE (utility exception)", () => {
   const root = makeWorkspace({ siteJson: UTILITY_SITE });
   const warnings = computeBrandWarnings({ hasCanvas: false, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /^BRAND NOTE:/);
-  assert.match(warnings[0], /plain utilit/);
-  assert.doesNotMatch(warnings[0], /^BRAND WARNING:/);
+  assert.match(required(warnings, 0), /^BRAND NOTE:/);
+  assert.match(required(warnings, 0), /plain utilit/);
+  assert.doesNotMatch(required(warnings, 0), /^BRAND WARNING:/);
 });
 
 test("non-canvas app with a compliant card is silent", () => {
@@ -70,21 +79,21 @@ test("card file without site.json card=custom warns", () => {
   const root = makeWorkspace({ siteJson: UTILITY_SITE, cardFile: "og.jpg" });
   const warnings = computeBrandWarnings({ hasCanvas: false, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /"card": "custom"/);
+  assert.match(required(warnings, 0), /"card": "custom"/);
 });
 
 test("card file with missing site.json warns for card=custom", () => {
   const root = makeWorkspace({ cardFile: "og.jpg" });
   const warnings = computeBrandWarnings({ hasCanvas: false, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /"card": "custom"/);
+  assert.match(required(warnings, 0), /"card": "custom"/);
 });
 
 test("card file with invalid site.json warns for card=custom", () => {
   const root = makeWorkspace({ siteJson: "{not-json", cardFile: "og.jpg" });
   const warnings = computeBrandWarnings({ hasCanvas: false, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /"card": "custom"/);
+  assert.match(required(warnings, 0), /"card": "custom"/);
 });
 
 test("oversized card warns for non-canvas apps too", () => {
@@ -95,17 +104,17 @@ test("oversized card warns for non-canvas apps too", () => {
   });
   const warnings = computeBrandWarnings({ hasCanvas: false, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /over 600 KB/);
+  assert.match(required(warnings, 0), /over 600 KB/);
 });
 
 test("canvas app with no card warns 'missing' and missing og:type", () => {
   const root = makeWorkspace({ siteJson: UTILITY_SITE });
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
   assert.equal(warnings.length, 2);
-  assert.match(warnings[0], /og\.jpg.*is missing/s);
-  assert.match(warnings[0], /not done/);
-  assert.match(warnings[1], /site\.json/);
-  assert.match(warnings[1], /og:type|x:game/);
+  assert.match(required(warnings, 0), /og\.jpg.*is missing/s);
+  assert.match(required(warnings, 0), /not done/);
+  assert.match(required(warnings, 1), /site\.json/);
+  assert.match(required(warnings, 1), /og:type|x:game/);
 });
 
 test("canvas card without type still warns for og:type", () => {
@@ -124,7 +133,7 @@ test("oversized card warns on the scraper budget (jpg and legacy png)", () => {
       narrowFile: "x-banner.jpg",
     });
     const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
-    assert.match(warnings[0], /over 600 KB/);
+    assert.match(required(warnings, 0), /over 600 KB/);
   }
 });
 
@@ -150,7 +159,7 @@ test("__root.tsx og:type no longer satisfies the canvas gate", () => {
   );
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /x:game/);
+  assert.match(required(warnings, 0), /x:game/);
 });
 
 test("oversized x-banner warns on the same scraper budget as og.jpg", () => {
@@ -162,7 +171,7 @@ test("oversized x-banner warns on the same scraper budget as og.jpg", () => {
   });
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /x-banner\.jpg is over 600 KB/);
+  assert.match(required(warnings, 0), /x-banner\.jpg is over 600 KB/);
 });
 
 test("legacy png + site.json type still needs the X feed card", () => {
@@ -196,7 +205,7 @@ test("a stale og-pending marker is ignored and the warnings return", () => {
   assert.equal(ogPendingActive(root), false);
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });
   assert.equal(warnings.length, 2);
-  assert.match(warnings[0], /not done/);
+  assert.match(required(warnings, 0), /not done/);
 });
 
 test("the marker goes stale on the clock, not on the file", () => {
@@ -208,7 +217,7 @@ test("the marker goes stale on the clock, not on the file", () => {
     [],
   );
   assert.match(
-    computeBrandWarnings({ hasCanvas: true, workspaceRoot: root, now: pastIt })[0],
+    required(computeBrandWarnings({ hasCanvas: true, workspaceRoot: root, now: pastIt }), 0),
     /^BRAND WARNING:/,
   );
 });
@@ -225,10 +234,11 @@ test("parseBrandCheckArgs takes --game, --placeholder-ok and --root, and rejects
     root: "/tmp/w",
   });
   assert.equal(parseBrandCheckArgs(["--placeholder-ok"]).placeholderOk, true);
-  assert.match(parseBrandCheckArgs(["--root"]).error, /--root needs a directory/);
-  assert.match(parseBrandCheckArgs(["--canvas"]).error, /unexpected argument: --canvas/);
+  assert.match(parseBrandCheckArgs(["--root"]).error ?? "", /--root needs a directory/);
+  assert.match(parseBrandCheckArgs(["--canvas"]).error ?? "", /unexpected argument: --canvas/);
 });
 
+/** @param {string} root @param {string[]} [extra] */
 const runCheck = (root, extra = []) =>
   spawnSync(process.execPath, [SCRIPT, "--root", root, ...extra], { encoding: "utf8" });
 
@@ -276,9 +286,9 @@ test("cli: a non-game with no card fails too — the pass exists to produce one"
   const result = JSON.parse(run.stdout);
   assert.equal(result.ok, false);
   assert.equal(result.warnings, 1);
-  assert.match(result.messages[0], /^BRAND WARNING: .*og\.jpg is missing and this pass exists/);
+  assert.match(required(result.messages, 0), /^BRAND WARNING: .*og\.jpg is missing and this pass exists/);
   // The parent's gate keeps tolerating the placeholder for a plain utility.
-  assert.match(computeBrandWarnings({ hasCanvas: false, workspaceRoot: root })[0], /^BRAND NOTE:/);
+  assert.match(required(computeBrandWarnings({ hasCanvas: false, workspaceRoot: root }), 0), /^BRAND NOTE:/);
 });
 
 test("cli: --placeholder-ok is how a plain-utility pass reports no card as expected", () => {
@@ -287,7 +297,7 @@ test("cli: --placeholder-ok is how a plain-utility pass reports no card as expec
   assert.equal(run.status, 0, run.stdout + run.stderr);
   const result = JSON.parse(run.stdout);
   assert.equal(result.ok, true);
-  assert.match(result.messages[0], /^BRAND NOTE:/);
+  assert.match(required(result.messages, 0), /^BRAND NOTE:/);
   // A game is never a placeholder app, so the flag cannot excuse one.
   const game = runCheck(root, ["--game", "--placeholder-ok"]);
   assert.equal(game.status, 1, game.stdout + game.stderr);
@@ -303,6 +313,7 @@ test("cli: a non-game with a compliant card passes", () => {
 
 // --- the prompts are the only enforcement here, so pin them to the code ---
 
+/** @param {string} rel */
 const readDoc = (rel) => readFileSync(join(TEMPLATE_ROOT, rel), "utf8");
 
 test("SKILL.md and AGENTS.md name the marker path and bound this script uses", () => {
@@ -333,6 +344,7 @@ const PROHIBITION_SECTIONS = [
   },
 ];
 
+/** @param {{ rel: string, label: string, from: string, until: RegExp }} section */
 function prohibitionSection({ rel, label, from, until }) {
   const doc = readDoc(rel);
   const start = doc.indexOf(from);

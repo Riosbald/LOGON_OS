@@ -214,8 +214,8 @@ describe("gateIdentityFromHeaders", () => {
   it("verifies the header token end to end and fails closed without it", async () => {
     const key = await makeKey("k1");
     const { fetchImpl } = staticJwks([key.jwk]);
-    process.env.GROK_PROJECT_ID = "proj-123";
-    process.env.GROK_GATE_ORIGIN = ISSUER;
+    process.env["GROK_PROJECT_ID"] = "proj-123";
+    process.env["GROK_GATE_ORIGIN"] = ISSUER;
     try {
       const token = await signToken(key, {
         sub: "user-1",
@@ -233,8 +233,8 @@ describe("gateIdentityFromHeaders", () => {
       );
       assert.equal(withoutToken, null);
     } finally {
-      delete process.env.GROK_PROJECT_ID;
-      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env["GROK_PROJECT_ID"];
+      delete process.env["GROK_GATE_ORIGIN"];
     }
   });
 
@@ -245,8 +245,8 @@ describe("gateIdentityFromHeaders", () => {
       fetchedFrom.push(url);
       return { keys: [key.jwk] };
     };
-    process.env.GROK_PROJECT_ID = "proj-123";
-    delete process.env.GROK_GATE_ORIGIN;
+    process.env["GROK_PROJECT_ID"] = "proj-123";
+    delete process.env["GROK_GATE_ORIGIN"];
     try {
       const token = await signToken(key, {
         sub: "user-1",
@@ -265,7 +265,7 @@ describe("gateIdentityFromHeaders", () => {
         "https://gate.app-builder-testing.com/__gate/identity-key",
       );
     } finally {
-      delete process.env.GROK_PROJECT_ID;
+      delete process.env["GROK_PROJECT_ID"];
     }
   });
 
@@ -276,8 +276,8 @@ describe("gateIdentityFromHeaders", () => {
       fetchedFrom.push(url);
       return { keys: [key.jwk] };
     };
-    delete process.env.GROK_PROJECT_ID;
-    delete process.env.GROK_GATE_ORIGIN;
+    delete process.env["GROK_PROJECT_ID"];
+    delete process.env["GROK_GATE_ORIGIN"];
     const token = await signToken(
       key,
       { sub: "user-1" },
@@ -297,8 +297,8 @@ describe("gateIdentityFromHeaders", () => {
   it("rejects a wrong-issuer token in the loopback default mode", async () => {
     const key = await makeKey("k-preview-iss");
     const { fetchImpl } = staticJwks([key.jwk]);
-    delete process.env.GROK_PROJECT_ID;
-    delete process.env.GROK_GATE_ORIGIN;
+    delete process.env["GROK_PROJECT_ID"];
+    delete process.env["GROK_GATE_ORIGIN"];
     const token = await signToken(
       key,
       { sub: "user-1" },
@@ -314,8 +314,8 @@ describe("gateIdentityFromHeaders", () => {
   it("verifies a preview-audience token when only GROK_GATE_ORIGIN is set", async () => {
     const key = await makeKey("k1");
     const { fetchImpl } = staticJwks([key.jwk]);
-    delete process.env.GROK_PROJECT_ID;
-    process.env.GROK_GATE_ORIGIN = ISSUER;
+    delete process.env["GROK_PROJECT_ID"];
+    process.env["GROK_GATE_ORIGIN"] = ISSUER;
     try {
       const token = await signToken(
         key,
@@ -333,15 +333,15 @@ describe("gateIdentityFromHeaders", () => {
         teamId: null,
       });
     } finally {
-      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env["GROK_GATE_ORIGIN"];
     }
   });
 
   it("rejects a preview-audience token when GROK_PROJECT_ID is set", async () => {
     const key = await makeKey("k1");
     const { fetchImpl } = staticJwks([key.jwk]);
-    process.env.GROK_PROJECT_ID = "proj-123";
-    process.env.GROK_GATE_ORIGIN = ISSUER;
+    process.env["GROK_PROJECT_ID"] = "proj-123";
+    process.env["GROK_GATE_ORIGIN"] = ISSUER;
     try {
       const token = await signToken(
         key,
@@ -354,16 +354,16 @@ describe("gateIdentityFromHeaders", () => {
       );
       assert.equal(identity, null);
     } finally {
-      delete process.env.GROK_PROJECT_ID;
-      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env["GROK_PROJECT_ID"];
+      delete process.env["GROK_GATE_ORIGIN"];
     }
   });
 
   it("rejects an app-audience token in preview mode", async () => {
     const key = await makeKey("k1");
     const { fetchImpl } = staticJwks([key.jwk]);
-    delete process.env.GROK_PROJECT_ID;
-    process.env.GROK_GATE_ORIGIN = ISSUER;
+    delete process.env["GROK_PROJECT_ID"];
+    process.env["GROK_GATE_ORIGIN"] = ISSUER;
     try {
       const token = await signToken(key, { sub: "user-1" });
       const identity = await gateIdentityFromHeaders(
@@ -372,47 +372,47 @@ describe("gateIdentityFromHeaders", () => {
       );
       assert.equal(identity, null);
     } finally {
-      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env["GROK_GATE_ORIGIN"];
     }
   });
 });
 
 describe("gateIdentityEnabled", () => {
   it("is enabled by default with no gate env vars", () => {
-    delete process.env.GROK_PROJECT_ID;
-    delete process.env.GROK_GATE_ORIGIN;
+    delete process.env["GROK_PROJECT_ID"];
+    delete process.env["GROK_GATE_ORIGIN"];
     assert.equal(gateIdentityEnabled(), true);
   });
 
   it("is disabled when VITE_AUTH_ENABLED is false", () => {
-    process.env.VITE_AUTH_ENABLED = "false";
+    process.env["VITE_AUTH_ENABLED"] = "false";
     try {
       assert.equal(gateIdentityEnabled(), false);
     } finally {
-      delete process.env.VITE_AUTH_ENABLED;
+      delete process.env["VITE_AUTH_ENABLED"];
     }
   });
 });
 
 describe("gateTokenAudience", () => {
   it("pins app:<id> when GROK_PROJECT_ID is set, even alongside GROK_GATE_ORIGIN", () => {
-    process.env.GROK_PROJECT_ID = "proj-123";
-    process.env.GROK_GATE_ORIGIN = ISSUER;
+    process.env["GROK_PROJECT_ID"] = "proj-123";
+    process.env["GROK_GATE_ORIGIN"] = ISSUER;
     try {
       assert.equal(gateTokenAudience(), "app:proj-123");
     } finally {
-      delete process.env.GROK_PROJECT_ID;
-      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env["GROK_PROJECT_ID"];
+      delete process.env["GROK_GATE_ORIGIN"];
     }
   });
 
   it("pins preview when GROK_PROJECT_ID is unset", () => {
-    delete process.env.GROK_PROJECT_ID;
-    process.env.GROK_GATE_ORIGIN = ISSUER;
+    delete process.env["GROK_PROJECT_ID"];
+    process.env["GROK_GATE_ORIGIN"] = ISSUER;
     try {
       assert.equal(gateTokenAudience(), "preview");
     } finally {
-      delete process.env.GROK_GATE_ORIGIN;
+      delete process.env["GROK_GATE_ORIGIN"];
     }
   });
 });

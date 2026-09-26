@@ -10,6 +10,9 @@ import {
   compareAuthInvariant,
   probeDevAuthEnabled,
 } from "./check-auth-invariant.mjs";
+/** @typedef {{ width: number, height: number, status: number, title: string, hasCanvas: boolean, bodyTextLen: number, bodyTextHash: string, bodyTextPrefix: string, horizontalOverflow: boolean, consoleErrors: string[], pageErrors: string[], screenshot: string }} ViewportResult */
+/** @typedef {{ url: string, viewports: Record<string, ViewportResult>, brandWarnings: string[], authWarnings: string[], verdictFile: string, divergesFromBaseline?: boolean, baselineReasons?: string[] }} SmokeRunVerdict */
+
 import {
   baselineComparison,
   bodyTextPrefix,
@@ -26,6 +29,9 @@ if (args.error) {
   process.exit(1);
 }
 
+if (args.url === undefined || args.outPng === undefined) {
+  throw new Error("browser smoke requires a URL and output path");
+}
 const url = checkedUrl(args.url);
 const outPng = checkedOutputPath(args.outPng, ["/workspace"]);
 const derived = derivedPaths(outPng);
@@ -34,13 +40,16 @@ const outJson = checkedOutputPath(derived.verdictJson, ["/workspace"], "verdict 
 
 const MAX_BASELINE_BYTES = 1024 * 1024;
 const baselineRequested = Boolean(args.baseline);
+/** @type {string | null} */
 let baselinePath = null;
+/** @type {string | null} */
 let baselineResolveError = null;
 if (baselineRequested) {
   try {
+    if (args.baseline === undefined) throw new Error("baseline path is missing");
     baselinePath = checkedOutputPath(realpathSync(args.baseline), ["/workspace"], "baseline");
   } catch (err) {
-    baselineResolveError = err?.code ?? "unresolvable path";
+    baselineResolveError = err instanceof Error && "code" in err ? String(err.code) : "unresolvable path";
   }
   if (baselinePath === outJson) {
     console.error(
@@ -59,7 +68,7 @@ if (baselineRequested) {
   }
 }
 
-const timeoutMs = Number(process.env.BROWSER_SMOKE_TIMEOUT_MS || 45000);
+const timeoutMs = Number(process.env["BROWSER_SMOKE_TIMEOUT_MS"] || 45000);
 
 const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800, screenshot: outPng },
@@ -68,6 +77,7 @@ const VIEWPORTS = [
 
 mkdirSync(dirname(outPng), { recursive: true });
 
+/** @param {SmokeRunVerdict} verdict */
 function compareAgainstBaseline(verdict) {
   if (!baselinePath) {
     return {
@@ -83,7 +93,7 @@ function compareAgainstBaseline(verdict) {
   } catch (err) {
     return {
       divergesFromBaseline: true,
-      reasons: [`baseline unreadable: ${err?.code ?? "read error"}`],
+      reasons: [`baseline unreadable: ${err instanceof Error && "code" in err ? String(err.code) : "read error"}`],
     };
   }
 }
@@ -95,8 +105,10 @@ try {
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
 
+  /** @type {Record<string, ViewportResult>} */
   const viewports = {};
   for (const vp of VIEWPORTS) {
+    /** @type {{ consoleErrors: string[], pageErrors: string[] }} */
     const errors = { consoleErrors: [], pageErrors: [] };
     const page = await browser.newPage({
       viewport: { width: vp.width, height: vp.height },
@@ -140,7 +152,9 @@ try {
     };
   }
 
-  const brandWarnings = computeBrandWarnings({ hasCanvas: viewports.desktop.hasCanvas });
+  const desktop = viewports["desktop"];
+  if (desktop === undefined) throw new Error("desktop viewport did not produce a verdict");
+  const brandWarnings = computeBrandWarnings({ hasCanvas: desktop.hasCanvas });
   // Only a dev server answers /__app-env, so smoking the built output reads as
   // indeterminate — report a divergence, never the absence of an observation.
   const authWarnings = authInvariantWarnings(
@@ -149,6 +163,7 @@ try {
       buildAuthEnabled: buildAuthEnabled(),
     }),
   );
+  /** @type {SmokeRunVerdict} */
   const verdict = { url, viewports, brandWarnings, authWarnings, verdictFile: outJson };
   if (baselineRequested) {
     const { divergesFromBaseline, reasons } = compareAgainstBaseline(verdict);
@@ -164,11 +179,12 @@ try {
   // Chromium accumulates across retries).
   process.exitCode = exitCodeFor(viewports);
 } catch (err) {
-  const failure = { ok: false, url, error: String(err?.message || err) };
+  /** @type {{ ok: false, url: string, error: string, verdictWriteError?: string }} */
+  const failure = { ok: false, url, error: err instanceof Error ? err.message : String(err) };
   try {
     writeFileSync(outJson, JSON.stringify(failure, null, 2));
   } catch (writeErr) {
-    failure.verdictWriteError = String(writeErr?.message || writeErr);
+    failure.verdictWriteError = writeErr instanceof Error ? writeErr.message : String(writeErr);
   }
   console.error(JSON.stringify(failure, null, 2));
   process.exitCode = 1;

@@ -11,12 +11,14 @@
  */
 export const APP_ENV_ROUTE = "/__app-env";
 
+/** @returns {import("vite").Plugin} */
 export function appEnvPlugin() {
   return {
     name: "app-builder:app-env",
     apply: "serve",
+    /** @param {import("vite").ViteDevServer} server */
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+      server.middlewares.use(/** @param {import("node:http").IncomingMessage} req @param {import("node:http").ServerResponse} res @param {import("vite").Connect.NextFunction} next */ (req, res, next) => {
         const pathOnly = (req.url ?? "").split("?", 1)[0];
         if (pathOnly !== APP_ENV_ROUTE || (req.method ?? "GET").toUpperCase() !== "GET") {
           next();

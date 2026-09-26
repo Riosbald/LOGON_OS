@@ -29,10 +29,11 @@ const PREVIEW_URL = `http://127.0.0.1:${PREVIEW_PORT}/`;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PID_FILE = join(ROOT, ".grok/preview.pid");
 const LOG_FILE = join(ROOT, ".grok/preview.log");
-const READY_TIMEOUT_MS = Number(process.env.PREVIEW_READY_TIMEOUT_MS || 60000);
+const READY_TIMEOUT_MS = Number(process.env["PREVIEW_READY_TIMEOUT_MS"] || 60000);
 const GRACE_MS = 3000;
 const POLL_MS = 100;
 
+/** @param {string[]} argv */
 export function parsePreviewArgs(argv) {
   const [action, ...rest] = argv;
   if (!action) return { error: "usage: node scripts/preview.mjs stop|restart" };
@@ -43,6 +44,7 @@ export function parsePreviewArgs(argv) {
   return { action };
 }
 
+/** @param {unknown} text */
 export function parsePid(text) {
   const pid = Number.parseInt(String(text ?? "").trim(), 10);
   // pid 1 is the sandbox init — never the preview, and dangerous to signal.
@@ -50,30 +52,43 @@ export function parsePid(text) {
 }
 
 /** pgid of a process from its /proc/<pid>/stat line. */
+/** @param {unknown} stat */
 export function parsePgid(stat) {
   const line = String(stat ?? "");
   // The comm field is parenthesised and may itself contain spaces; state, ppid
   // and pgrp are the three fields after it.
   const end = line.lastIndexOf(") ");
   if (end === -1) return null;
-  const pgid = Number.parseInt(line.slice(end + 2).split(/\s+/)[2], 10);
+  const pgid = Number.parseInt(line.slice(end + 2).split(/\s+/)[2] ?? "", 10);
   return Number.isInteger(pgid) && pgid > 0 ? pgid : null;
 }
 
 const TCP_LISTEN = "0A";
 
 /** Socket inodes of the LISTEN sockets on `port` in a /proc/net/tcp{,6} dump. */
+/** @param {unknown} procNetTcp @param {number} port */
 export function parseListenerInodes(procNetTcp, port) {
   const wanted = `:${port.toString(16).toUpperCase().padStart(4, "0")}`;
   const inodes = [];
   for (const line of String(procNetTcp ?? "").split("\n")) {
     const cols = line.trim().split(/\s+/);
-    if (cols.length < 10 || cols[3] !== TCP_LISTEN || !cols[1].endsWith(wanted)) continue;
-    if (/^\d+$/.test(cols[9])) inodes.push(cols[9]);
+    const state = cols[3];
+    const localAddress = cols[1];
+    const inode = cols[9];
+    if (
+      state === undefined ||
+      localAddress === undefined ||
+      inode === undefined ||
+      cols.length < 10 ||
+      state !== TCP_LISTEN ||
+      !localAddress.endsWith(wanted)
+    ) continue;
+    if (/^\d+$/.test(inode)) inodes.push(inode);
   }
   return inodes;
 }
 
+/** @param {unknown} cmdline */
 export function looksLikePreviewProcess(cmdline) {
   // /proc/<pid>/cmdline is NUL-separated.
   const argv = String(cmdline ?? "")
@@ -95,6 +110,7 @@ export function looksLikePreviewProcess(cmdline) {
  * a claim left by an earlier run — pids are re-used across hibernate/revive, so
  * signal it only when its command line still looks like the preview.
  */
+/** @param {{ portPids: number[], pidFilePid: number | null, cmdlineOf: (pid: number) => string }} options */
 export function previewOwners({ portPids, pidFilePid, cmdlineOf }) {
   const owners = new Set(portPids);
   if (
@@ -107,6 +123,7 @@ export function previewOwners({ portPids, pidFilePid, cmdlineOf }) {
   return [...owners];
 }
 
+/** @param {number[]} pids @param {{ isAlive: (pid: number) => boolean, sleep: (ms: number) => Promise<void>, timeoutMs: number, pollMs: number }} options */
 async function waitForExit(pids, { isAlive, sleep, timeoutMs, pollMs }) {
   let remaining = pids.filter((pid) => isAlive(pid));
   for (let waited = 0; remaining.length > 0 && waited < timeoutMs; waited += pollMs) {
@@ -121,6 +138,7 @@ async function waitForExit(pids, { isAlive, sleep, timeoutMs, pollMs }) {
  * Returns `{ signalled, killed, stubborn }` — `stubborn` is still alive after
  * the SIGKILL wait, which means the port is not reliably free.
  */
+/** @param {number[]} pids @param {{ kill: (pid: number, signal: NodeJS.Signals) => void, isAlive: (pid: number) => boolean, sleep: (ms: number) => Promise<void>, graceMs?: number, pollMs?: number }} options */
 export async function terminatePids(
   pids,
   { kill, isAlive, sleep, graceMs = GRACE_MS, pollMs = POLL_MS },
@@ -138,6 +156,7 @@ export async function terminatePids(
  * means a listener exists whose pid could not be resolved, so it may not claim
  * the port is free.
  */
+/** @param {{ signalled: number[], stubborn: number[], after: { pids: number[], unattributed?: boolean } }} options */
 export function stopOutcome({ signalled, stubborn, after }) {
   const held = [...new Set([...stubborn, ...after.pids])];
   if (held.length > 0) {
@@ -156,17 +175,20 @@ export function stopOutcome({ signalled, stubborn, after }) {
   return { ok: true, message };
 }
 
+/** @param {number} ms */
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** @param {number} pid */
 function isAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
   } catch (err) {
-    return err?.code === "EPERM";
+    return err instanceof Error && "code" in err && err.code === "EPERM";
   }
 }
 
+/** @param {number} pid */
 function pgidOf(pid) {
   try {
     return parsePgid(readFileSync(`/proc/${pid}/stat`, "utf8"));
@@ -175,6 +197,7 @@ function pgidOf(pid) {
   }
 }
 
+/** @param {number} pid @param {NodeJS.Signals} signal */
 function killPid(pid, signal) {
   // restart() detaches the server into its own process group, so signal the
   // group to reach `vite` under the `npm` wrapper. Only for a leader: `-pid` on
@@ -194,6 +217,7 @@ function killPid(pid, signal) {
   }
 }
 
+/** @param {number} pid */
 function cmdlineOf(pid) {
   try {
     return readFileSync(`/proc/${pid}/cmdline`, "utf8");
@@ -211,8 +235,10 @@ function readPidFile() {
   }
 }
 
+/** @param {Set<string>} inodes @returns {number[]} */
 function pidsForSocketInodes(inodes) {
   const targets = new Set([...inodes].map((inode) => `socket:[${inode}]`));
+  /** @type {number[]} */
   const pids = [];
   for (const entry of readdirSync("/proc")) {
     const pid = parsePid(entry);
@@ -258,6 +284,7 @@ function portOwners() {
   return { pids, unattributed: inodes.size > 0 && pids.length === 0 };
 }
 
+/** @param {boolean} [announce] */
 async function stop(announce = true) {
   const owners = previewOwners({
     portPids: portOwners().pids,
@@ -278,6 +305,7 @@ async function stop(announce = true) {
   return true;
 }
 
+/** @param {() => string | null} failure */
 async function waitForReady(failure) {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline && failure() === null) {
@@ -305,6 +333,7 @@ async function restart() {
   child.unref();
   writeFileSync(PID_FILE, `${child.pid}\n`);
 
+  /** @type {string | null} */
   let failure = null;
   child.on("error", (err) => {
     failure = `npm run preview could not be spawned: ${err.message}`;

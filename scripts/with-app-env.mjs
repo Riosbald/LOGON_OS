@@ -34,6 +34,7 @@ const VITE_PREFIX = "VITE_";
  * Anything unparseable is an empty environment — a workspace without the file
  * must behave exactly like today (auth on, no overrides).
  */
+/** @param {string} text @returns {Record<string, string>} */
 export function parseAppEnv(text) {
   let parsed;
   try {
@@ -42,6 +43,7 @@ export function parseAppEnv(text) {
     return {};
   }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  /** @type {Record<string, string>} */
   const env = {};
   for (const [key, value] of Object.entries(parsed)) {
     if (!key.startsWith(VITE_PREFIX)) continue;
@@ -52,6 +54,7 @@ export function parseAppEnv(text) {
 }
 
 /** The app env recorded under `root`, or `{}` when the file is absent. */
+/** @param {string} root @returns {Record<string, string>} */
 export function readAppEnv(root) {
   try {
     return parseAppEnv(readFileSync(join(root, APP_ENV_REL_PATH), "utf8"));
@@ -61,6 +64,7 @@ export function readAppEnv(root) {
 }
 
 /** File values under the process environment: an explicit override wins. */
+/** @param {Record<string, string>} appEnv @param {Record<string, string | undefined>} processEnv @returns {Record<string, string | undefined>} */
 export function mergeAppEnv(appEnv, processEnv) {
   return { ...appEnv, ...processEnv };
 }
@@ -74,6 +78,7 @@ export function mergeAppEnv(appEnv, processEnv) {
  * test worker and fails the image build. `128 + signo` is what a shell reports
  * for a signal-killed command, so a cancelled `vite build` is still a failure.
  */
+/** @param {number | null} code @param {NodeJS.Signals | null} signal */
 export function exitStatusFromChild(code, signal) {
   if (signal) {
     const signo = osConstants.signals[signal];
@@ -94,6 +99,7 @@ export function projectRoot() {
  * but leaves `process.argv[1]` as typed, so comparing them raw makes a CLI
  * launched through a symlinked path (`/tmp` on macOS) a silent no-op.
  */
+/** @param {string} moduleUrl */
 export function isMainModule(moduleUrl) {
   const entry = process.argv[1];
   if (!entry) return false;
@@ -104,6 +110,7 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+/** @param {string[]} argv */
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
@@ -113,7 +120,9 @@ function main(argv) {
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
   const child = spawn(command, args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
-  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  /** @type {NodeJS.Signals[]} */
+  const signals = ["SIGINT", "SIGTERM", "SIGHUP"];
+  for (const signal of signals) {
     process.on(signal, () => child.kill(signal));
   }
   child.on("error", (err) => {
